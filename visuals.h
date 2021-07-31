@@ -8,11 +8,20 @@ struct OffScreenDamageData_t {
     __forceinline OffScreenDamageData_t( float time, float m_color_step, Color color ) : m_time{ time }, m_color{ color } {}
 };
 
+struct WorldHitmarkerData_t {
+    float m_time, m_alpha;
+    float m_pos_x, m_pos_y, m_pos_z;
+
+    vec2_t m_world_pos;
+    bool m_world_to_screen;
+};
+
 class Visuals {
 public:
 	std::array< bool, 64 >                  m_draw;
 	std::array< float, 2048 >               m_opacities;
     std::array< OffScreenDamageData_t, 64 > m_offscreen_damage;
+    std::vector< WorldHitmarkerData_t >     m_world_hitmarkers;
 	vec2_t                                  m_crosshair;
 	bool                                    m_thirdperson;
 	float					                m_hit_start, m_hit_end, m_hit_duration;
@@ -91,14 +100,15 @@ public:
 public:
 	static void ModulateWorld( );
 	void ThirdpersonThink( );
-	void Hitmarker( );
+	void HitmarkerScreen( );
+	void HitmarkerWorld( );
 	void NoSmoke( );
 	void think( );
 	void Spectators( );
 	void StatusIndicators( );
 	void SpreadCrosshair( );
     void PenetrationCrosshair( );
-    void DrawPlantedC4();
+    void DrawPlantedC4(Entity* ent);
 	void draw( Entity* ent );
 	void DrawProjectile( Weapon* ent );
 	void DrawItem( Weapon* item );
@@ -108,7 +118,8 @@ public:
 	void DrawHistorySkeleton( Player* player, int opacity );
 	void DrawSkeleton( Player* player, int opacity );
 	void RenderGlow( );
-	void DrawHitboxMatrix( LagRecord* record, Color col, float time );
+	void DrawHitboxMatrix( Player* player, matrix3x4_t* bones, Color col, float time );
+	void DrawHitboxMatrix( LagComp::LagRecord_t* record, Color col, float time );
     void DrawBeams( );
 	void DebugAimbotPoints( Player* player );
 };

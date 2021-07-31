@@ -1,4 +1,4 @@
-#include "includes.h"
+#include "../includes.h"
 
 float penetration::scale( Player* player, float damage, float armor_ratio, int hitgroup ) {
 	bool  has_heavy_armor;
@@ -105,7 +105,7 @@ bool penetration::TraceToExit( const vec3_t &start, const vec3_t& dir, vec3_t& o
 		// move end pos a bit for tracing.
 		new_end = out - ( dir * 4.f );
 
-		// do first trace aHR0cHM6Ly9zdGVhbWNvbW11bml0eS5jb20vaWQvc2ltcGxlcmVhbGlzdGlj.
+		// do first trace.
 		g_csgo.m_engine_trace->TraceRay( Ray( out, new_end ), MASK_SHOT, nullptr, exit_trace );
 
         // note - dex; this is some new stuff added sometime around late 2017 ( 10.31.2017 update? ).
@@ -195,7 +195,7 @@ void penetration::ClipTraceToPlayer( const vec3_t& start, const vec3_t& end, uin
 }
 
 bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
-    static CTraceFilterSkipTwoEntities_game filter{};
+    static CTraceFilterSimple_game filter{};
 
 	int			  pen{ 4 }, enter_material, exit_material;
 	float		  damage, penetration, penetration_mod, player_damage, remaining, trace_len{}, total_pen_mod, damage_mod, modifier, damage_lost;
@@ -207,7 +207,7 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 	WeaponInfo    *weapon_info;
 
 	// if we are tracing from our local player perspective.
-	if( in->m_from->m_bIsLocalPlayer( ) ) {
+	if( in->m_from == g_cl.m_local ) {
 		weapon      = g_cl.m_weapon;
 		weapon_info = g_cl.m_weapon_info;
 		start       = g_cl.m_shoot_pos;
@@ -225,12 +225,12 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 			return false;
 
 		// set trace start.
-		start = in->m_from->GetShootPosition( );
+		start = in->m_from->Weapon_ShootPosition( );
 	}
 
 	// get some weapon data.
-	damage      = ( float )weapon_info->m_damage;
-	penetration = weapon_info->m_penetration;
+	damage      = ( float )weapon_info->iDamage;
+	penetration = weapon_info->flPenetration;
 
     // used later in calculations.
     penetration_mod = std::max( 0.f, ( 3.f / penetration ) * 1.25f );
@@ -239,35 +239,35 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 	dir = ( in->m_pos - start ).normalized( );
 
     // setup trace filter for later.
-    filter.SetPassEntity( in->m_from );
-    filter.SetPassEntity2( nullptr );
+	filter.SetPassEntity(in->m_from);
+   // filter.SetPassEntity2( nullptr );
 
     while( damage > 0.f ) {
 		// calculating remaining len.
-		remaining = weapon_info->m_range - trace_len;
+		remaining = weapon_info->flRange - trace_len;
 
 		// set trace end.
 		end = start + ( dir * remaining );
 
 		// setup ray and trace.
 		// TODO; use UTIL_TraceLineIgnoreTwoEntities?
-		g_csgo.m_engine_trace->TraceRay( Ray( start, end ), MASK_SHOT, (ITraceFilter *)&filter, &trace );
-
-		// check for player hitboxes extending outside their collision bounds.
-		// if no target is passed we clip the trace to a specific player, otherwise we clip the trace to any player.
-		if( in->m_target )
-			ClipTraceToPlayer( start, end + ( dir * 40.f ), MASK_SHOT, &trace, in->m_target, -60.f );
-
-		else
-			game::UTIL_ClipTraceToPlayers( start, end + ( dir * 40.f ), MASK_SHOT, (ITraceFilter *)&filter, &trace, -60.f );
+		g_csgo.m_engine_trace->TraceRay( Ray( start, end ), MASK_SHOT | CONTENTS_HITBOX, (ITraceFilter *)&filter, &trace );
 
 		// we didn't hit anything.
 		if( trace.m_fraction == 1.f )
 			return false;
 
+		// check for player hitboxes extending outside their collision bounds.
+		// if no target is passed we clip the trace to a specific player, otherwise we clip the trace to any player.
+		if (in->m_target)
+			ClipTraceToPlayer(start, end + (dir * 40.f), MASK_SHOT | CONTENTS_HITBOX, &trace, in->m_target, -60.f);
+
+		else
+			game::UTIL_ClipTraceToPlayers(start, end + (dir * 40.f), MASK_SHOT | CONTENTS_HITBOX, (ITraceFilter*)&filter, &trace, -60.f);
+
 		// calculate damage based on the distance the bullet traveled.
 		trace_len += trace.m_fraction * remaining;
-		damage    *= std::pow( weapon_info->m_range_modifier, trace_len / 500.f );
+		damage    *= std::pow( weapon_info->flRangeModifier, trace_len / 500.f );
 
 		// if a target was passed.
 		if( in->m_target ) {
@@ -277,7 +277,7 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 				int group = ( weapon->m_iItemDefinitionIndex( ) == ZEUS ) ? HITGROUP_GENERIC : trace.m_hitgroup;
 
 				// scale damage based on the hitgroup we hit.
-				player_damage = scale( in->m_target, damage, weapon_info->m_armor_ratio, group );
+				player_damage = scale( in->m_target, damage, weapon_info->flArmorRatio, group );
 
 				// set result data for when we hit a player.
 			    out->m_pen      = pen != 4;
@@ -302,7 +302,7 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 			if( trace.m_entity && trace.m_entity->IsPlayer( ) && game::IsValidHitgroup( trace.m_hitgroup ) ) {
 				int group = ( weapon->m_iItemDefinitionIndex( ) == ZEUS ) ? HITGROUP_GENERIC : trace.m_hitgroup;
 
-				player_damage = scale( trace.m_entity->as< Player* >( ), damage, weapon_info->m_armor_ratio, group );
+				player_damage = scale( trace.m_entity->as< Player* >( ), damage, weapon_info->flArmorRatio, group );
 
 				// set result data for when we hit a player.
 				out->m_hitgroup = group;
@@ -384,9 +384,14 @@ bool penetration::run( PenetrationInput_t* in, PenetrationOutput_t* out ) {
 		}
 
 		// set some local vars.
-		trace_len   = ( exit_trace.m_endpos - trace.m_endpos ).length( );
-		modifier    = std::max( 0.f, 1.f / total_pen_mod );
-		damage_lost = ( ( modifier * 3.f ) * penetration_mod + ( damage * damage_mod ) ) + ( ( ( trace_len * trace_len ) * modifier ) / 24.f );
+		trace_len   = ( exit_trace.m_endpos - trace.m_endpos ).length_sqr( );
+		modifier    = fmaxf( 1.f / total_pen_mod, 0.f );
+
+		// this calculates how much damage we've lost depending on thickness of the wall, our penetration, damage, and the modifiers set earlier
+		damage_lost = fmaxf(
+			( ( modifier * trace_len ) / 24.f )
+			+ ( ( damage * damage_mod )
+				+ ( fmaxf( 3.75 / penetration, 0.f ) * 3.f * modifier ) ), 0.f );
 
 		// subtract from damage.
 		damage -= std::max( 0.f, damage_lost );

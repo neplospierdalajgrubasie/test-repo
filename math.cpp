@@ -25,6 +25,28 @@ void math::NormalizeAngle( float &angle ) {
     angle = ( angle < 0.f ) ? angle + ( 360.f * rot ) : angle - ( 360.f * rot );
 }
 
+float math::NormalizeYaw( float angle ) {
+    if( !std::isfinite( angle ) )
+        angle = 0.f;
+
+    return std::remainderf( angle, 360.0f );
+}
+
+vec3_t math::CalcAngle( const vec3_t& vecSource, const vec3_t& vecDestination ) {
+    vec3_t vAngle;
+    vec3_t delta( ( vecSource.x - vecDestination.x ), ( vecSource.y - vecDestination.y ), ( vecSource.z - vecDestination.z ) );
+    double hyp = sqrt( delta.x * delta.x + delta.y * delta.y );
+
+    vAngle.x = float( atanf( float( delta.z / hyp ) ) * 57.295779513082f );
+    vAngle.y = float( atanf( float( delta.y / delta.x ) ) * 57.295779513082f );
+    vAngle.z = 0.0f;
+
+    if( delta.x >= 0.0 )
+        vAngle.y += 180.0f;
+
+    return vAngle;
+}
+
 float math::ApproachAngle( float target, float value, float speed ) {
     float delta;
 
@@ -208,6 +230,81 @@ void math::ConcatTransforms( const matrix3x4_t &in1, const matrix3x4_t &in2, mat
     out[ 2 ][ 1 ] = in1[ 2 ][ 0 ] * in2[ 0 ][ 1 ] + in1[ 2 ][ 1 ] * in2[ 1 ][ 1 ] + in1[ 2 ][ 2 ] * in2[ 2 ][ 1 ];
     out[ 2 ][ 2 ] = in1[ 2 ][ 0 ] * in2[ 0 ][ 2 ] + in1[ 2 ][ 1 ] * in2[ 1 ][ 2 ] + in1[ 2 ][ 2 ] * in2[ 2 ][ 2 ];
     out[ 2 ][ 3 ] = in1[ 2 ][ 0 ] * in2[ 0 ][ 3 ] + in1[ 2 ][ 1 ] * in2[ 1 ][ 3 ] + in1[ 2 ][ 2 ] * in2[ 2 ][ 3 ] + in1[ 2 ][ 3 ];
+}
+
+float math::SegmentToSegment(const vec3_t s1, const vec3_t s2, const vec3_t k1, const vec3_t k2)
+{
+    static auto constexpr epsilon = 0.00000001;
+
+    auto u = s2 - s1;
+    auto v = k2 - k1;
+    const auto w = s1 - k1;
+
+    const auto a = u.dot(u);
+    const auto b = u.dot(v);
+    const auto c = v.dot(v);
+    const auto d = u.dot(w);
+    const auto e = v.dot(w);
+    const auto D = a * c - b * b;
+    float sn, sd = D;
+    float tn, td = D;
+
+    if (D < epsilon) {
+        sn = 0.0;
+        sd = 1.0;
+        tn = e;
+        td = c;
+    }
+    else {
+        sn = b * e - c * d;
+        tn = a * e - b * d;
+
+        if (sn < 0.0) {
+            sn = 0.0;
+            tn = e;
+            td = c;
+        }
+        else if (sn > sd) {
+            sn = sd;
+            tn = e + b;
+            td = c;
+        }
+    }
+
+    if (tn < 0.0) {
+        tn = 0.0;
+
+        if (-d < 0.0)
+            sn = 0.0;
+        else if (-d > a)
+            sn = sd;
+        else {
+            sn = -d;
+            sd = a;
+        }
+    }
+    else if (tn > td) {
+        tn = td;
+
+        if (-d + b < 0.0)
+            sn = 0;
+        else if (-d + b > a)
+            sn = sd;
+        else {
+            sn = -d + b;
+            sd = a;
+        }
+    }
+
+    const float sc = abs(sn) < epsilon ? 0.0 : sn / sd;
+    const float tc = abs(tn) < epsilon ? 0.0 : tn / td;
+
+    m128 n;
+    auto dp = w + u * sc - v * tc;
+    n.f[0] = dp.dot(dp);
+    const auto calc = sqrt_ps(n.v);
+    return reinterpret_cast<const m128*>(&calc)->f[0];
+
 }
 
 bool math::IntersectRayWithBox( const vec3_t &start, const vec3_t &delta, const vec3_t &mins, const vec3_t &maxs, float tolerance, BoxTraceInfo_t *out_info ) {
@@ -459,4 +556,23 @@ bool math::IntersectRayWithSphere( const vec3_t &start, const vec3_t &delta, con
 
 vec3_t math::Interpolate( const vec3_t from, const vec3_t to, const float percent ) {
     return to * percent + from * ( 1.f - percent );
+}
+
+ang_t math::Interpolate( const ang_t from, const ang_t to, const float percent ) {
+    return to * percent + from * ( 1.f - percent );
+}
+
+// not the same as math::Lerp
+float math::Interpolate( const float from, const float to, const float percent ) {
+    return to * percent + from * ( 1.f - percent );
+}
+
+void math::MatrixSetOrigin( vec3_t pos, matrix3x4_t& matrix ) {
+    matrix[ 0 ][ 3 ] = pos.x;
+    matrix[ 1 ][ 3 ] = pos.y;
+    matrix[ 2 ][ 3 ] = pos.z;
+}
+
+vec3_t math::MatrixGetOrigin( const matrix3x4_t& src ) {
+    return { src[ 0 ][ 3 ], src[ 1 ][ 3 ], src[ 2 ][ 3 ] };
 }

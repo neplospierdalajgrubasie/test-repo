@@ -211,13 +211,13 @@ public:
 	__forceinline Ray( ) : m_world_axis_transform{}, m_is_ray{}, m_is_swept{} {}
 
 	__forceinline Ray( const vec3_t &start, const vec3_t &end ) {
-		m_delta                = vec_aligned_t{ end - start };
-		m_is_swept             = m_delta.length_sqr( ) != 0.f;
+		m_delta = vec_aligned_t{ end - start };
 		m_world_axis_transform = nullptr;
-		m_is_ray               = true;
-		m_start                = start;
-		m_start_offset.clear( );
-		m_extents.clear( );
+		m_is_swept = m_delta.length() != 0.f;
+		m_extents.x = m_extents.y = m_extents.z = 0.0f;
+		m_is_ray = m_extents.length_sqr() < 1e-6;
+		m_start_offset.x = m_start_offset.y = m_start_offset.z = 0.0f;
+		*reinterpret_cast<vec3_t*>(&m_start) = start;
 	}
 
 	__forceinline Ray( const vec3_t& start, const vec3_t& end, const vec3_t& mins, const vec3_t& maxs ) {
@@ -251,9 +251,20 @@ public:
 
 class CTraceFilter : public ITraceFilter {
 public:
-	virtual TraceType_t	GetTraceType( ) const {
-        return TRACE_EVERYTHING;
+	bool ShouldHitEntity(Entity* entity, int contents_mask) override {
+		return !(entity == skip_entity);
 	}
+
+	TraceType_t GetTraceType() const override {
+		return TRACE_EVERYTHING;
+	}
+
+	inline void ignoreClass(char* Class) {
+		ignore = Class;
+	}
+
+	Entity* skip_entity{};
+	char* ignore{};
 };
 
 class CTraceFilterSimple : public CTraceFilter {

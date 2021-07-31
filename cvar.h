@@ -63,7 +63,6 @@ public:
 		GETSTRING      = 11,
 		GETFLOAT       = 12,
 		GETINT         = 13,
-		GETBOOL        = 13,
 		SETVALUE_SZ    = 14,
 		SETVALUE_FLOAT = 15,
 		SETVALUE_INT   = 16,

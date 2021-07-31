@@ -21,8 +21,10 @@ public:
 	void init( );
 
 	bool OverridePlayer( int index );
+	void RenderFakeChams( );
 	bool GenerateLerpedMatrix( int index, BoneArray* out );
 	void RenderHistoryChams( int index );
+	void RenderResolveChams( int index );
 	bool DrawModel( uintptr_t ctx, const DrawModelState_t& state, const ModelRenderInfo_t& info, matrix3x4_t* bone );
 	void SceneEnd( );
 

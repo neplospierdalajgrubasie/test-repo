@@ -1,139 +1,98 @@
-#include "includes.h"
+#include "../../../includes.h"
 
 void Hooks::DoExtraBoneProcessing( int a2, int a3, int a4, int a5, int a6, int a7 ) {
 	// cast thisptr to player ptr.
 	Player* player = ( Player* )this;
 
-	/*
-		zero out animstate player pointer so CCSGOPlayerAnimState::DoProceduralFootPlant will not do anything.
+	if( !player )
+		return g_hooks.m_player.GetOldMethod<DoExtraBoneProcessing_t>( Player::DOEXTRABONEPROCESSING )( this, a2, a3, a4, a5, a6, a7 );
 
-		.text:103BB25D 8B 56 60                                mov     edx, [esi+60h]
-		.text:103BB260 85 D2                                   test    edx, edx
-		.text:103BB262 0F 84 B4 0E 00 00                       jz      loc_103BC11C
-	*/
+	if( player && player->IsPlayer( ) && player->alive( ) ) {
+		int* pAnimLayersOwner = reinterpret_cast< int* >( *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( player ) + 0x2990 ) + 0x30 );
+		for( int i = 13; i; --i ) {
+			if( reinterpret_cast< Player* >( pAnimLayersOwner ) != player ) {
+				*pAnimLayersOwner = reinterpret_cast< uintptr_t >( player );
+			}
 
-	// get animstate ptr.
-	CCSGOPlayerAnimState* animstate = player->m_PlayerAnimState( );
-
-	// backup pointer.
-	Player*	backup{ nullptr };
-	
-	if( animstate ) {
-		// backup player ptr.
-		backup = animstate->m_player;
-	
-		// null player ptr, GUWOP gang.
-		animstate->m_player = nullptr;
+			pAnimLayersOwner += 14;
+		}
 	}
 
-	// call og.
-	g_hooks.m_DoExtraBoneProcessing( this, a2, a3, a4, a5, a6, a7 );
-
-	// restore ptr.
-	if( animstate && backup )
-		animstate->m_player = backup;
+	return;
 }
 
 void Hooks::BuildTransformations( int a2, int a3, int a4, int a5, int a6, int a7 ) {
 	// cast thisptr to player ptr.
 	Player* player = ( Player* )this;
 
-	// get bone jiggle.
-	int bone_jiggle = *reinterpret_cast< int* >( uintptr_t( player ) + 0x291C );
+	if (!player || !player->IsPlayer())
+		return g_hooks.m_player.GetOldMethod<BuildTransformations_t>(Player::BUILDTRANSFORMATIONS)(this, a2, a3, a4, a5, a6, a7);
 
-	// null bone jiggle to prevent attachments from jiggling around.
-	*reinterpret_cast< int* >( uintptr_t( player ) + 0x291C ) = 0;
+	// backup jiggle bones.
+	auto backup_jiggle_bones = player->get<uintptr_t>( 0x292C );
+
+	// overwrite jiggle bones and refuse the game from calling the
+	// code responsible for animating our attachments/weapons.
+	player->set( 0x292C, 0 );
 
 	// call og.
-	g_hooks.m_BuildTransformations( this, a2, a3, a4, a5, a6, a7 );
+	g_hooks.m_player.GetOldMethod<BuildTransformations_t>( Player::BUILDTRANSFORMATIONS )( this, a2, a3, a4, a5, a6, a7 );
 
-	// restore bone jiggle.
-	*reinterpret_cast< int* >( uintptr_t( player ) + 0x291C ) = bone_jiggle;
+	// revert jiggle bones.
+	player->set( 0x292C, backup_jiggle_bones );
+}
+
+void Hooks::StandardBlendingRules( int a2, int a3, int a4, int a5, int a6 ) {
+	// cast thisptr to player ptr.
+	Player* player = ( Player* )this;
+
+	if( !player || ( player->index( ) - 1 ) > 63 )
+		return g_hooks.m_player.GetOldMethod<StandardBlendingRules_t>( Player::STANDARDBLENDINGRULES )( this, a2, a3, a4, a5, a6 );
+
+	// disable interpolation.
+	if (!(player->m_fEffects() & EF_NOINTERP))
+		player->m_fEffects( ) |= EF_NOINTERP;
+
+	g_hooks.m_player.GetOldMethod<StandardBlendingRules_t>( Player::STANDARDBLENDINGRULES )( this, a2, a3, a4, a5, a6 );
+
+	// restore interpolation.
+	player->m_fEffects( ) &= ~EF_NOINTERP;
 }
 
 void Hooks::UpdateClientSideAnimation( ) {
-	if( g_cl.m_processing )
-		g_cl.SetAngles( );
-	else {
-		g_hooks.m_UpdateClientSideAnimation( this );
+	Player* player = ( Player* )this;
+
+	if( !player || !player->m_bIsLocalPlayer( ) )
+		return g_hooks.m_player.GetOldMethod<UpdateClientSideAnimation_t>( Player::UPDATECLIENTSIDEANIMATION )( this );
+
+	if( g_cl.m_update ) {
+		g_hooks.m_player.GetOldMethod<UpdateClientSideAnimation_t>( Player::UPDATECLIENTSIDEANIMATION )( this );
 	}
 }
 
-Weapon *Hooks::GetActiveWeapon( ) {
-    Stack stack;
-
-    static Address ret_1 = pattern::find( g_csgo.m_client_dll, XOR( "85 C0 74 1D 8B 88 ? ? ? ? 85 C9" ) );
-
-    // note - dex; stop call to CIronSightController::RenderScopeEffect inside CViewRender::RenderView.
-    if( g_menu.main.visuals.noscope.get( ) ) {
-        if( stack.ReturnAddress( ) == ret_1 )
-            return nullptr;
-    }
-
-    return g_hooks.m_GetActiveWeapon( this );
+vec3_t Hooks::Weapon_ShootPosition( vec3_t* ang ) {
+	Player* player = ( Player* )this;
+	
+	// CCSPlayer::Weapon_ShootPosition calls client's version of CCSGOPlayerAnimState::ModifyEyePosition( ... ) 
+	// we don't want this to happen - hence we should just return our own Weapon_ShootPosition, to ensure accuracy
+	// as close to server as possible.
+	return player->Weapon_ShootPosition( );
 }
 
-void CustomEntityListener::OnEntityCreated( Entity *ent ) {
-    if( ent ) {
-        // player created.
-        if( ent->IsPlayer( ) ) {
-		    Player* player = ent->as< Player* >( );
+void Hooks::CalcView( vec3_t& eyeOrigin, vec3_t& eyeAngles, float& zNear, float& zFar, float& fov ) {
+	Player* player = ( Player* )this;
 
-		    // access out player data stucture and reset player data.
-		    AimPlayer* data = &g_aimbot.m_players[ player->index( ) - 1 ];
-            if( data )
-		        data->reset( );
-
-		    // get ptr to vmt instance and reset tables.
-		    VMT* vmt = &g_hooks.m_player[ player->index( ) - 1 ];
-            if( vmt ) {
-                // init vtable with new ptr.
-		        vmt->reset( );
-		        vmt->init( player );
-
-		        // hook this on every player.
-		        g_hooks.m_DoExtraBoneProcessing = vmt->add< Hooks::DoExtraBoneProcessing_t >( Player::DOEXTRABONEPROCESSING, util::force_cast( &Hooks::DoExtraBoneProcessing ) );
-
-		        // local gets special treatment.
-		        if( player->index( ) == g_csgo.m_engine->GetLocalPlayer( ) ) {
-		        	g_hooks.m_UpdateClientSideAnimation = vmt->add< Hooks::UpdateClientSideAnimation_t >( Player::UPDATECLIENTSIDEANIMATION, util::force_cast( &Hooks::UpdateClientSideAnimation ) );
-                    g_hooks.m_GetActiveWeapon           = vmt->add< Hooks::GetActiveWeapon_t >( Player::GETACTIVEWEAPON, util::force_cast( &Hooks::GetActiveWeapon ) );
-                    g_hooks.m_BuildTransformations      = vmt->add< Hooks::BuildTransformations_t >( Player::BUILDTRANSFORMATIONS, util::force_cast( &Hooks::BuildTransformations ) );
-                }
-            }
-        }
-
-        // ragdoll created.
-        // note - dex; sadly, it seems like m_hPlayer (GetRagdollPlayer) is null here... probably has to be done somewhere else.
-        // if( ent->is( HASH( "CCSRagdoll" ) ) ) {
-        //     Player *ragdoll_player{ ent->GetRagdollPlayer( ) };
-        // 
-        //     // note - dex;  ragdoll ents (DT_CSRagdoll) seem to contain some new netvars now, m_flDeathYaw and m_flAbsYaw.
-        //     //              didnt test much but making a bot with bot_mimic look at yaws:
-        //     //
-        //     //              -107.98 gave me m_flDeathYaw=-16.919 and m_flAbsYaw=268.962
-        //     //              46.05 gave me m_flDeathYaw=-21.685 and m_flAbsYaw=67.742
-        //     //             
-        //     //              these angles don't seem consistent... but i didn't test much.
-        // 
-        //     g_cl.print( "ragdoll 0x%p created on client at time %f, from player 0x%p\n", ent, g_csgo.m_globals->m_curtime, ragdoll_player );
-        // }
-	}
-}
-
-void CustomEntityListener::OnEntityDeleted( Entity *ent ) {
-    // note; IsPlayer doesn't work here because the ent class is CBaseEntity.
-	if( ent && ent->index( ) >= 1 && ent->index( ) <= 64 ) {
-		Player* player = ent->as< Player* >( );
-
-		// access out player data stucture and reset player data.
-		AimPlayer* data = &g_aimbot.m_players[ player->index( ) - 1 ];
-        if( data )
-		    data->reset( );
-
-		// get ptr to vmt instance and reset tables.
-		VMT* vmt = &g_hooks.m_player[ player->index( ) - 1 ];
-		if( vmt )
-		    vmt->reset( );
-	}
+	if( !player || !player->m_bIsLocalPlayer( ) )
+		return g_hooks.m_player.GetOldMethod<CalcView_t>( Player::CALCVIEW )( this, eyeOrigin, eyeAngles, zNear, zFar, fov );
+	
+	// Prevent CalcView from calling CCSGOPlayerAnimState::ModifyEyePosition( ... ) 
+	// this will fix inaccuracies, for example when fakeducking - and will enforce
+	// us to use our own rebuilt version of CCSGOPlayerAnimState::ModifyEyePosition from the server.
+	auto m_bUseNewAnimstate = player->get<bool>( 0x3AB4 );
+	
+	player->set<int>( 0x3AB4, false );
+	
+	g_hooks.m_player.GetOldMethod<CalcView_t>( Player::CALCVIEW )( this, eyeOrigin, eyeAngles, zNear, zFar, fov );
+	
+	player->set<int>( 0x3AB4, m_bUseNewAnimstate );
 }

@@ -58,7 +58,7 @@ namespace crypto {
 
 		return ret;
 	}
-// eW91dHViZS5jb20vZHlsYW5ob29r
+
 	inline std::string base64_encode( std::string const & input ) {
 		return base64_encode(
 			reinterpret_cast<const unsigned char *>( input.data( ) ),

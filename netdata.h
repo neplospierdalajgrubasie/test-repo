@@ -8,9 +8,10 @@ private:
 		ang_t  m_punch;
 		ang_t  m_punch_vel;
 		vec3_t m_view_offset;
+		float  m_velocity_modifier;
 
 	public:
-		__forceinline StoredData_t( ) : m_tickbase{}, m_punch{}, m_punch_vel{}, m_view_offset{} {};
+		__forceinline StoredData_t( ) : m_tickbase{ }, m_punch{ }, m_punch_vel{ }, m_view_offset{ }, m_velocity_modifier{ } {};
 	};
 
 	std::array< StoredData_t, MULTIPLAYER_BACKUP > m_data;

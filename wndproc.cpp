@@ -1,4 +1,4 @@
-#include "includes.h"
+#include "../../../includes.h"
 
 LRESULT WINAPI Hooks::WndProc( HWND wnd, uint32_t msg, WPARAM wp, LPARAM lp ) {
 	switch( msg ) {
@@ -68,6 +68,10 @@ LRESULT WINAPI Hooks::WndProc( HWND wnd, uint32_t msg, WPARAM wp, LPARAM lp ) {
 
 		break;
 
+	case WM_MOUSEWHEEL:
+		g_input.m_scroll = (GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA);
+		break;
+
 	case WM_CHAR:
 		switch( wp ) {
 		case VK_BACK:
@@ -81,7 +85,7 @@ LRESULT WINAPI Hooks::WndProc( HWND wnd, uint32_t msg, WPARAM wp, LPARAM lp ) {
 			break;
 
 		default:
-			if( std::isdigit( static_cast< char >( wp ) ) )
+			if (wp > 0 && wp < 0x10000)
 				g_input.m_buffer += static_cast< char >( wp );
 
 			break;

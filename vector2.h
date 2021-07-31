@@ -8,6 +8,8 @@ public:
 public:
 	// ctors
 	__forceinline vec2_t( void ) {}
+	__forceinline vec2_t(int x, float y) : x{ (float)x }, y{ y } {}
+	__forceinline vec2_t(float x, int y) : x{ x }, y{ float(y) } {}
 	__forceinline vec2_t( float x, float y ) : x{ x }, y{ y } {}
 	__forceinline vec2_t( int x, int y ) : x{ ( float )x }, y{ float( y ) } {}
 
@@ -149,6 +151,16 @@ public:
 		return *this;
 	}
 
+	__forceinline bool operator<(const vec2_t& in) const
+	{
+		return (x < in.x&& y < in.y);
+	}
+
+	__forceinline bool operator>(const vec2_t& in) const
+	{
+		return (x > in.x && y > in.y);
+	}
+
 	// methods.
 	__forceinline float length_sqr( ) const {
 		return ( x * x + y * y );
@@ -160,5 +172,9 @@ public:
 
 	__forceinline void clear( ) {
 		x = y = 0.f;
+	}
+
+	__forceinline bool valid( ) const {
+		return x > 1 && y > 1;
 	}
 };

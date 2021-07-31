@@ -1,5 +1,13 @@
 #pragma once
 
+struct Hit_t {
+	char pad0x8[ 0x8 ];
+	float m_pos_x;
+	float m_pos_y;
+	float m_time;
+	float m_pos_z;
+};
+
 enum Stage_t {
 	FRAME_UNDEFINED = -1,
 	FRAME_START,
@@ -33,16 +41,21 @@ public:
 		LEVELSHUTDOWN		= 7,
 		GETALLCLASSES       = 8,
 		HUDPROCESSINPUT     = 10,
-		INACTIVATEMOUSE     = 15,
+		INACTIVATEMOUSE     = 16,
 		INKEYEVENT          = 20,
 		CREATEMOVE          = 21,
 		RENDERVIEW          = 27,
-		FRAMESTAGENOTIFY    = 36,
-		DISPATCHUSERMESSAGE = 37,
+		FRAMESTAGENOTIFY    = 37,
+		DISPATCHUSERMESSAGE = 38,
+		USRCMDTODELTABUFFER = 24,
 	};
 
 public:
 	__forceinline ClientClass* GetAllClasses( ) {
 		return util::get_method< ClientClass*( __thiscall* )( decltype( this ) )>( this, GETALLCLASSES )( this );
+	}
+
+	__forceinline bool WriteUserCmdDeltaToBuffer( int nSlot, void* buf, int from, int to, bool isNewCmd ) {
+		return util::get_method< bool( __thiscall* )( decltype( this ), int, void*, int, int, bool )>( this, USRCMDTODELTABUFFER )( this, nSlot, buf, from, to, isNewCmd );
 	}
 };

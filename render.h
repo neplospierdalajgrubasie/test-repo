@@ -52,10 +52,9 @@ namespace render {
 		FontSize_t wsize( const std::wstring& text );
 	};
 
-	extern Font menu;
-	extern Font menu_shade;
 	extern Font esp;
-	extern Font esp_small;
+	extern Font pixel;
+	extern Font console;
 	extern Font hud;
 	extern Font cs;
 	extern Font indicator;
@@ -63,6 +62,7 @@ namespace render {
 	void init( );
 	bool WorldToScreen( const vec3_t& world, vec2_t& screen );
 	void line( vec2_t v0, vec2_t v1, Color color );
+	void world_circle( vec3_t origin, float radius, Color color );
 	void line( int x0, int y0, int x1, int y1, Color color );
 	void rect( int x, int y, int w, int h, Color color );
 	void rect_filled( int x, int y, int w, int h, Color color );
@@ -73,5 +73,3 @@ namespace render {
 	void sphere( vec3_t origin, float radius, float angle, float scale, Color color );
 	Vertex RotateVertex( const vec2_t& p, const Vertex& v, float angle );
 }
-
-// nitro du hurensohn

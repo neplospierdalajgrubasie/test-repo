@@ -13,6 +13,7 @@ public:
 	float  m_old_yaw;
 	float  m_circle_yaw;
 	bool   m_invert;
+	bool m_slow_motion;
 
 public:
 	void JumpRelated( );
@@ -20,10 +21,11 @@ public:
 	void DoPrespeed( );
 	bool GetClosestPlane( vec3_t& plane );
 	bool WillCollide( float time, float step );
-	void FixMove( CUserCmd* cmd, const ang_t& old_angles );
+	void FixMove( CUserCmd* cmd, ang_t old_angles );
 	void AutoPeek( );
-	void QuickStop( );
+	void AutoStop();
 	void FakeWalk( );
+	void ClampMovementSpeed(float speed);
 };
 
 extern Movement g_movement;

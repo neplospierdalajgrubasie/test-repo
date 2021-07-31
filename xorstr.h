@@ -9,7 +9,7 @@
 #define GET_XOR_KEYUI16 ( ( CONST_HASH( __FILE__ __TIMESTAMP__ ) + __LINE__ ) % UINT16_MAX )
 #define GET_XOR_KEYUI32 ( ( CONST_HASH( __FILE__ __TIMESTAMP__ ) + __LINE__ ) % UINT32_MAX )
 
-namespace xor{
+namespace xor {
 	// actual xor implementation.
 	template< class t, const size_t len, const t key >
 	class Gen {
@@ -18,27 +18,27 @@ namespace xor{
 
 	private:
 		// encrypt single character.
-		constexpr t enc(const t c) const noexcept {
+		constexpr t enc( const t c ) const noexcept {
 			return c ^ key;
 		}
 
 		// decrypt single character.
-		__forceinline t dec(const t c) const noexcept {
+		__forceinline t dec( const t c ) const noexcept {
 			return c ^ key;
 		}
 
 	public:
 		// iterate each byte and decrypt.
-		__forceinline auto data() noexcept {
-			for (size_t i{ 0u }; i < len; ++i)
-				m_buffer[i] = dec(m_buffer[i]);
+		__forceinline auto data( ) noexcept {
+            for( size_t i{ 0u }; i < len; ++i )
+				m_buffer[ i ] = dec( m_buffer[ i ] );
 
-			return m_buffer.data();
+			return m_buffer.data( );
 		}
 
 		// ctor.
 		template< size_t... seq >
-		constexpr __forceinline Gen(const t(&s)[len], std::index_sequence< seq... >) noexcept : m_buffer{ enc(s[seq])... } {}
+		constexpr __forceinline Gen( const t( &s )[ len ], std::index_sequence< seq... > ) noexcept : m_buffer{ enc( s[ seq ] )... } {}
 	};
 }
 
@@ -47,12 +47,12 @@ namespace xor{
 //              sadly, this increasess compile time by a fuck ton.
 
 template< class t, const size_t len >
-constexpr __forceinline auto XorStr(const t(&s)[len]) {
-	return xor ::Gen< t, len, GET_XOR_KEYUI8 >(s, std::make_index_sequence< len >()).data();
+constexpr __forceinline auto XorStr( const t( &s )[ len ] ) {
+	return xor::Gen< t, len, GET_XOR_KEYUI8 >( s, std::make_index_sequence< len >( ) ).data( );
 }
 
 #ifdef _DEBUG
-#define XOR( s ) ( s )
+	#define XOR( s ) ( s )
 #else
-#define XOR( s ) ( XorStr( s ) )
+	#define XOR( s ) ( XorStr( s ) )
 #endif

@@ -27,15 +27,14 @@ enum AntiAimMode : size_t {
 
 class HVH {
 public:
-	size_t m_mode;
 	int    m_pitch;
 	int    m_yaw;
+	int    m_yaw_fake;
 	float  m_jitter_range;
 	float  m_rot_range;
 	float  m_rot_speed;
 	float  m_rand_update;
 	int    m_dir;
-	float  m_dir_custom;
 	size_t m_base_angle;
 	float  m_auto_time;
 
@@ -44,21 +43,27 @@ public:
 	float  m_next_random_update;
 	float  m_random_angle;
 	float  m_direction;
+	float  m_real;
 	float  m_auto;
 	float  m_auto_dist;
 	float  m_auto_last;
 	float  m_view;
 
+	bool m_fake_duck;
+	bool m_use_real_around_fake;
+	bool m_jitter_update;
+
 public:
+	void AntiAim( );
 	void IdealPitch( );
 	void AntiAimPitch( );
-	void AutoDirection( );
-	void GetAntiAimDirection( );
-    bool DoEdgeAntiAim( Player *player, ang_t &out );
-	void DoRealAntiAim( );
-	void DoFakeAntiAim( );
-	void AntiAim( );
+	void PrepareFake( );
+	float ChooseReal( );
+	void AdjustYaw( );
+	void AtTarget( );
+	void UpdateJitter( );
 	void SendPacket( );
+	void FakeDuck( );
 };
 
 extern HVH g_hvh;

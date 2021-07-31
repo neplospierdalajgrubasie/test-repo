@@ -61,7 +61,7 @@ struct studiohdr_t {
 class model_t {
 public:
 	void*  m_handle;
-	char   m_name[ 260 ];
+	char   m_name[ 255 ];
 	int    m_load_flags;
 	int    m_server_count;
 	int    m_type;
@@ -80,8 +80,8 @@ public:
 	enum indices : size_t {
         GETMODEL           = 1,
 		GETMODELINDEX      = 2,
-        GETMODELFRAMECOUNT = 8,
-		GETSTUDIOMODEL     = 30,
+        GETMODELFRAMECOUNT = 7,
+		GETSTUDIOMODEL     = 32,
         FINDORLOADMODEL    = 43
 	};
 

@@ -52,11 +52,13 @@ namespace events {
 	void bomb_beginplant( IGameEvent* evt );
 	void bomb_abortplant( IGameEvent* evt );
 	void bomb_planted( IGameEvent* evt );
-    void bomb_beep( IGameEvent* evt );
 	void bomb_begindefuse( IGameEvent* evt );
 	void bomb_abortdefuse( IGameEvent* evt );
     void bomb_defused( IGameEvent* evt );
+	void round_freeze_end( IGameEvent* evt );
+	void client_disconnect( IGameEvent* evt );
     void bomb_exploded( IGameEvent* evt );
+	void weapon_fire(IGameEvent* evt);
 }
 
 extern Listener g_listener;

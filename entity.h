@@ -5,7 +5,6 @@
 enum Hitboxes_t : int {
 	HITBOX_HEAD = 0,
 	HITBOX_NECK,
-	HITBOX_LOWER_NECK,
 	HITBOX_PELVIS,
 	HITBOX_BODY,
 	HITBOX_THORAX,
@@ -24,6 +23,28 @@ enum Hitboxes_t : int {
 	HITBOX_L_UPPER_ARM,
 	HITBOX_L_FOREARM,
 	HITBOX_MAX
+};
+
+enum PoseParam_t {
+	STRAFE_YAW,
+	STAND_POSE,
+	LEAN_YAW,
+	SPEED,
+	LADDER_YAW,
+	LADDER_SPEED,
+	JUMP_FALL,
+	MOVE_YAW,
+	MOVE_BLEND_CROUCH,
+	MOVE_BLEND_WALK,
+	MOVE_BLEND_RUN,
+	BODY_YAW,
+	BODY_PITCH,
+	AIM_BLEND_STAND_IDLE,
+	AIM_BLEND_STAND_WALK,
+	AIM_BLEND_STAND_RUN,
+	AIM_BLEND_COURCH_IDLE,
+	AIM_BLEND_CROUCH_WALK,
+	DEATH_YAW
 };
 
 enum RenderFlags_t : uint32_t {
@@ -63,28 +84,23 @@ enum BoneFlags_t : int {
 };
 
 enum CSWeaponType : int {
-	WEAPONTYPE_UNKNOWN = -1,
-	WEAPONTYPE_KNIFE,
+	WEAPONTYPE_EQUIPMENT = 0, //not sure about this naming
+	WEAPONTYPE_KNIFE = 1,
 	WEAPONTYPE_PISTOL,
 	WEAPONTYPE_SUBMACHINEGUN,
 	WEAPONTYPE_RIFLE,
-	WEAPONTYPE_SHOTGUN,
-	WEAPONTYPE_SNIPER_RIFLE,
-	WEAPONTYPE_MACHINEGUN,
-	WEAPONTYPE_C4,
-	WEAPONTYPE_TASER,
-	WEAPONTYPE_GRENADE,
-	WEAPONTYPE_HEALTHSHOT = 11
+	WEAPONTYPE_HEAVY,
+	WEAPONTYPE_UNKNOWN
 };
 
-enum teams_t : int {
+enum Teams_t : int {
 	TEAM_NOTEAM = 0,
 	TEAM_SPECTATOR,
 	TEAM_TERRORISTS,
 	TEAM_COUNTERTERRORISTS
 };
 
-enum effects_t : int {
+enum Effects_t : int {
 	EF_BONEMERGE = 0x001,	// Performs bone merge on client side
 	EF_BRIGHTLIGHT = 0x002,	// DLIGHT centered at entity origin
 	EF_DIMLIGHT = 0x004,	// player flashlight
@@ -103,6 +119,8 @@ enum InvalidatePhysicsBits_t : int {
 	ANGLES_CHANGED = 0x2,
 	VELOCITY_CHANGED = 0x4,
 	ANIMATION_CHANGED = 0x8,
+	BOUNDS_CHANGED = 0x10,
+	SEQUENCE_CHANGED = 0x20
 };
 
 enum DataUpdateType_t : int {
@@ -119,16 +137,16 @@ enum LifeStates_t : int {
 };
 
 enum PlayerFlags_t : int {
-	FL_ONGROUND = (1 << 0),
-	FL_DUCKING = (1 << 1),
-	FL_WATERJUMP = (1 << 3),
-	FL_ONTRAIN = (1 << 4),
-	FL_INRAIN = (1 << 5),
-	FL_FROZEN = (1 << 6),
-	FL_ATCONTROLS = (1 << 7),
-	FL_CLIENT = (1 << 8),
-	FL_FAKECLIENT = (1 << 9),
-	FL_INWATER = (1 << 10),
+	FL_ONGROUND = ( 1 << 0 ),
+	FL_DUCKING = ( 1 << 1 ),
+	FL_WATERJUMP = ( 1 << 3 ),
+	FL_ONTRAIN = ( 1 << 4 ),
+	FL_INRAIN = ( 1 << 5 ),
+	FL_FROZEN = ( 1 << 6 ),
+	FL_ATCONTROLS = ( 1 << 7 ),
+	FL_CLIENT = ( 1 << 8 ),
+	FL_FAKECLIENT = ( 1 << 9 ),
+	FL_INWATER = ( 1 << 10 ),
 };
 
 enum MoveType_t : int {
@@ -163,6 +181,7 @@ enum Weapons_t : int {
 	M4A4 = 16,
 	MAC10 = 17,
 	P90 = 19,
+	MP5_SD = 23,
 	UMP45 = 24,
 	XM1014 = 25,
 	BIZON = 26,
@@ -179,7 +198,7 @@ enum Weapons_t : int {
 	SCAR20 = 38,
 	SG553 = 39,
 	SSG08 = 40,
-	KNIFE_T = 42,
+	KNIFE_CT = 42,
 	FLASHBANG = 43,
 	HEGRENADE = 44,
 	SMOKE = 45,
@@ -188,13 +207,14 @@ enum Weapons_t : int {
 	FIREBOMB = 48,
 	C4 = 49,
 	MUSICKIT = 58,
-	KNIFE_CT = 59,
+	KNIFE_T = 59,
 	M4A1S = 60,
 	USPS = 61,
 	TRADEUPCONTRACT = 62,
 	CZ75A = 63,
 	REVOLVER = 64,
 	KNIFE_BAYONET = 500,
+	KNIFE_CSS = 503,
 	KNIFE_FLIP = 505,
 	KNIFE_GUT = 506,
 	KNIFE_KARAMBIT = 507,
@@ -204,84 +224,114 @@ enum Weapons_t : int {
 	KNIFE_BOWIE = 514,
 	KNIFE_BUTTERFLY = 515,
 	KNIFE_SHADOW_DAGGERS = 516,
+	KNIFE_CORD = 517,
+	KNIFE_CANIS = 518,
+	KNIFE_URSUS = 519,
+	KNIFE_GYPSY_JACKKNIFE = 520,
+	KNIFE_OUTDOOR = 521,
+	KNIFE_STILETTO = 522,
+	KNIFE_WIDOWMAKER = 523,
+	KNIFE_SKELETON = 525,
 };
 
 struct RenderableInstance_t {
 	uint8_t m_alpha;
-	__forceinline RenderableInstance_t() : m_alpha{ 255ui8 } {}
+	__forceinline RenderableInstance_t( ) : m_alpha{ 255ui8 } {}
+};
+
+class IHandleEntity {
+public:
+	virtual ~IHandleEntity( ) {}
+	virtual void SetRefEHandle( const CBaseHandle& handle ) = 0;
+	virtual const ulong_t& GetRefEHandle( ) const = 0;
+};
+
+class IClientUnknown : public IHandleEntity {
+public:
+	virtual void* GetCollideable( ) = 0;
+	virtual void* GetClientNetworkable( ) = 0;
+	virtual void* GetClientRenderable( ) = 0;
+	virtual void* GetIClientEntity( ) = 0;
+	virtual void* GetBaseEntity( ) = 0;
+	virtual void* GetClientThinkable( ) = 0;
+	virtual void* GetClientAlphaProperty( ) = 0;
 };
 
 class Entity {
 public:
 	// helper methods.
 	template< typename t >
-	__forceinline t &get(size_t offset) {
-		return *(t *)((uintptr_t)this + offset);
+	__forceinline t& get( size_t offset ) {
+		return *( t* )( ( uintptr_t )this + offset );
 	}
 
 	template< typename t >
-	__forceinline void set(size_t offset, const t &val) {
-		*(t *)((uintptr_t)this + offset) = val;
+	__forceinline void set( size_t offset, const t& val ) {
+		*( t* )( ( uintptr_t )this + offset ) = val;
 	}
 
 	template< typename t >
-	__forceinline t as() {
-		return (t)this;
+	__forceinline t as( ) {
+		return ( t )this;
 	}
 
 public:
 	// netvars / etc.
-	__forceinline vec3_t &m_vecOrigin() {
-		return get< vec3_t >(g_entoffsets.m_vecOrigin);
+	__forceinline vec3_t& m_vecOrigin( ) {
+		return get< vec3_t >( g_entoffsets.m_vecOrigin );
 	}
 
-	__forceinline vec3_t &m_vecOldOrigin() {
-		return get< vec3_t >(g_entoffsets.m_vecOldOrigin);
+	__forceinline vec3_t& m_vecOldOrigin( ) {
+		return get< vec3_t >( g_entoffsets.m_vecOldOrigin );
 	}
 
-	__forceinline vec3_t &m_vecVelocity() {
-		return get< vec3_t >(g_entoffsets.m_vecVelocity);
+	__forceinline vec3_t& m_vecVelocity( ) {
+		return get< vec3_t >( g_entoffsets.m_vecVelocity );
 	}
 
-	__forceinline vec3_t &m_vecMins() {
-		return get< vec3_t >(g_entoffsets.m_vecMins);
+	__forceinline vec3_t& m_vecMins( ) {
+		return get< vec3_t >( g_entoffsets.m_vecMins );
 	}
 
-	__forceinline vec3_t &m_vecMaxs() {
-		return get< vec3_t >(g_entoffsets.m_vecMaxs);
+	__forceinline vec3_t& m_vecMaxs( ) {
+		return get< vec3_t >( g_entoffsets.m_vecMaxs );
 	}
 
-	__forceinline int &m_iTeamNum() {
-		return get< int >(g_entoffsets.m_iTeamNum);
+	__forceinline int& m_iTeamNum( ) {
+		return get< int >( g_entoffsets.m_iTeamNum );
 	}
 
-	__forceinline int &m_nSequence() {
-		return get< int >(g_entoffsets.m_nSequence);
+	__forceinline int& m_nSequence( ) {
+		return get< int >( g_entoffsets.m_nSequence );
 	}
 
-	__forceinline float &m_flCycle() {
-		return get< float >(g_entoffsets.m_flCycle);
+	__forceinline float& m_flCycle( ) {
+		return get< float >( g_entoffsets.m_flCycle );
 	}
 
-	__forceinline float &m_flC4Blow() {
-		return get< float >(g_entoffsets.m_flC4Blow);
+	__forceinline float& m_flAnimTime( ) {
+		return get< float >( g_entoffsets.m_flAnimTime );
 	}
 
-	__forceinline bool &m_bBombTicking() {
-		return get< bool >(g_entoffsets.m_bBombTicking);
+	__forceinline float& m_flC4Blow( ) {
+		return get< float >( g_entoffsets.m_flC4Blow );
 	}
 
-	__forceinline int &m_fEffects() {
+	__forceinline bool& m_bBombTicking( ) {
+		return get< bool >( g_entoffsets.m_bBombTicking );
+	}
+
+	__forceinline int& m_fEffects( ) {
 		// todo; netvar.
-		return get< int >(g_entoffsets.m_fEffects);
+		return get< int >( g_entoffsets.m_fEffects );
 	}
 
-	__forceinline int &m_nModelIndex() {
-		return get< int >(g_entoffsets.m_nModelIndex);
+	__forceinline int& m_nModelIndex( ) {
+		return get< int >( g_entoffsets.m_nModelIndex );
 	}
 
-	__forceinline bool &m_bReadyToDraw() {
-		return get< bool >(g_entoffsets.m_bReadyToDraw);
+	__forceinline bool& m_bReadyToDraw( ) {
+		return get< bool >( g_entoffsets.m_bReadyToDraw );
 	}
 
 public:
@@ -289,144 +339,148 @@ public:
 	enum indices : size_t {
 		WORLDSPACECENTER = 78,
 		GETMAXHEALTH = 122,
-		ISPLAYER = 152,
-		ISBASECOMBATWEAPON = 160,
+		ISPLAYER = 158,
+		ISBASECOMBATWEAPON = 166,
 	};
 
 public:
 	// virtuals.
 	// renderable table.
-	__forceinline void *renderable() {
-		return (void *)((uintptr_t)this + 0x4);
+	__forceinline void* renderable( ) {
+		return ( void* )( ( uintptr_t )this + 0x4 );
 	}
 
-	__forceinline vec3_t &GetRenderOrigin() {
-		return util::get_method< vec3_t &(__thiscall *)(void *) >(renderable(), 1)(renderable());
+	__forceinline vec3_t& GetRenderOrigin( ) {
+		return util::get_method< vec3_t& ( __thiscall* )( void* ) >( renderable( ), 1 )( renderable( ) );
 	}
 
-	__forceinline ang_t &GetRenderAngles() {
-		return util::get_method< ang_t &(__thiscall *)(void *) >(renderable(), 2)(renderable());
+	__forceinline ang_t& GetRenderAngles( ) {
+		return util::get_method< ang_t& ( __thiscall* )( void* ) >( renderable( ), 2 )( renderable( ) );
 	}
 
-	__forceinline const model_t *GetModel() {
-		return util::get_method< const model_t *(__thiscall *)(void *) >(renderable(), 8)(renderable());
+	__forceinline const model_t* GetModel( ) {
+		return util::get_method< const model_t* ( __thiscall* )( void* ) >( renderable( ), 8 )( renderable( ) );
 	}
 
-	__forceinline void DrawModel(int flags = STUDIO_RENDER, const RenderableInstance_t &instance = {}) {
-		return util::get_method< void(__thiscall *)(void *, int, const RenderableInstance_t &)>(renderable(), 9)(renderable(), flags, instance);
+	__forceinline void DrawModel( int flags = STUDIO_RENDER, const RenderableInstance_t& instance = { } ) {
+		return util::get_method< void( __thiscall* )( void*, int, const RenderableInstance_t& )>( renderable( ), 9 )( renderable( ), flags, instance );
 	}
 
-	__forceinline bool SetupBones(matrix3x4_t *out, int max, int mask, float time) {
-		return util::get_method< bool(__thiscall *)(void *, matrix3x4_t *, int, int, float)>(renderable(), 13)(renderable(), out, max, mask, time);
+	__forceinline bool SetupBones( matrix3x4_t* out, int max, int mask, float time ) {
+		return util::get_method< bool( __thiscall* )( void*, matrix3x4_t*, int, int, float )>( renderable( ), 13 )( renderable( ), out, max, mask, time );
 	}
 
 	// networkable table.
-	__forceinline void *networkable() {
-		return (void *)((uintptr_t)this + 0x8);
+	__forceinline void* networkable( ) {
+		return ( void* )( ( uintptr_t )this + 0x8 );
 	}
 
-	__forceinline void Release() {
-		return util::get_method< void(__thiscall *)(void *) >(networkable(), 1)(networkable());
+	__forceinline IClientUnknown* GetIClientUnknown( ) {
+		return util::get_method< IClientUnknown* ( __thiscall* )( void* ) >( networkable( ), 0 )( networkable( ) );
 	}
 
-	__forceinline ClientClass *GetClientClass() {
-		return util::get_method< ClientClass *(__thiscall *)(void *) >(networkable(), 2)(networkable());
+	__forceinline void Release( ) {
+		return util::get_method< void( __thiscall* )( void* ) >( networkable( ), 1 )( networkable( ) );
 	}
 
-	__forceinline void OnDataChanged(DataUpdateType_t type) {
-		return util::get_method< void(__thiscall *)(void *, DataUpdateType_t) >(networkable(), 5)(networkable(), type);
+	__forceinline ClientClass* GetClientClass( ) {
+		return util::get_method< ClientClass* ( __thiscall* )( void* ) >( networkable( ), 2 )( networkable( ) );
 	}
 
-	__forceinline void PreDataUpdate(DataUpdateType_t type) {
-		return util::get_method< void(__thiscall *)(void *, DataUpdateType_t) >(networkable(), 6)(networkable(), type);
+	__forceinline void OnDataChanged( DataUpdateType_t type ) {
+		return util::get_method< void( __thiscall* )( void*, DataUpdateType_t ) >( networkable( ), 5 )( networkable( ), type );
 	}
 
-	__forceinline void PostDataUpdate(DataUpdateType_t type) {
-		return util::get_method< void(__thiscall *)(void *, DataUpdateType_t) >(networkable(), 7)(networkable(), type);
+	__forceinline void PreDataUpdate( DataUpdateType_t type ) {
+		return util::get_method< void( __thiscall* )( void*, DataUpdateType_t ) >( networkable( ), 6 )( networkable( ), type );
 	}
 
-	__forceinline bool dormant() {
-		return util::get_method< bool(__thiscall *)(void *) >(networkable(), 9)(networkable());
+	__forceinline void PostDataUpdate( DataUpdateType_t type ) {
+		return util::get_method< void( __thiscall* )( void*, DataUpdateType_t ) >( networkable( ), 7 )( networkable( ), type );
 	}
 
-	__forceinline int index() {
-		return util::get_method< int(__thiscall *)(void *) >(networkable(), 10)(networkable());
+	__forceinline bool dormant( ) {
+		return util::get_method< bool( __thiscall* )( void* ) >( networkable( ), 9 )( networkable( ) );
 	}
 
-	__forceinline void SetDestroyedOnRecreateEntities() {
-		return util::get_method< void(__thiscall *)(void *) >(networkable(), 13)(networkable());
+	__forceinline int index( ) {
+		return util::get_method< int( __thiscall* )( void* ) >( networkable( ), 10 )( networkable( ) );
+	}
+
+	__forceinline void SetDestroyedOnRecreateEntities( ) {
+		return util::get_method< void( __thiscall* )( void* ) >( networkable( ), 13 )( networkable( ) );
 	}
 
 	// normal table.
-	__forceinline const vec3_t &GetAbsOrigin() {
-		return util::get_method< const vec3_t &(__thiscall *)(void *) >(this, 10)(this);
+	__forceinline const vec3_t& GetAbsOrigin( ) {
+		return util::get_method< const vec3_t& ( __thiscall* )( void* ) >( this, 10 )( this );
 	}
 
-	__forceinline const ang_t &GetAbsAngles() {
-		return util::get_method< const ang_t &(__thiscall *)(void *) >(this, 11)(this);
+	__forceinline const ang_t& GetAbsAngles( ) {
+		return util::get_method< const ang_t& ( __thiscall* )( void* ) >( this, 11 )( this );
 	}
 
-	__forceinline bool IsPlayer() {
-		return util::get_method< bool(__thiscall *)(void *) >(this, ISPLAYER)(this);
+	__forceinline bool IsPlayer( ) {
+		return GetClientClass( )->m_ClassID == 40;
 	}
 
-	__forceinline bool IsBaseCombatWeapon() {
-		return util::get_method< bool(__thiscall *)(void *) >(this, ISBASECOMBATWEAPON)(this);
+	__forceinline bool IsBaseCombatWeapon( ) {
+		return util::get_method< bool( __thiscall* )( void* ) >( this, ISBASECOMBATWEAPON )( this );
 	}
 
-	__forceinline std::string GetBombsiteName() {
+	__forceinline std::string GetBombsiteName( ) {
 		std::string out;
 
 		// note - dex; bomb_target + 0x150 has a char array for site name... not sure how much memory gets allocated for it.
-		out.resize(32u);
+		out.resize( 32u );
 
-		std::memcpy(&out[0], (const void *)((uintptr_t)this + 0x150), 32u);
+		std::memcpy( &out[ 0 ], ( const void* )( ( uintptr_t )this + 0x150 ), 32u );
 
 		return out;
 	}
 
-	__forceinline void InvalidatePhysicsRecursive(InvalidatePhysicsBits_t bits) {
-		using InvalidatePhysicsRecursive_t = void(__thiscall *)(decltype(this), InvalidatePhysicsBits_t);
-		g_csgo.InvalidatePhysicsRecursive.as< InvalidatePhysicsRecursive_t >()(this, bits);
+	__forceinline void InvalidatePhysicsRecursive( InvalidatePhysicsBits_t bits ) {
+		using InvalidatePhysicsRecursive_t = void( __thiscall* )( decltype( this ), InvalidatePhysicsBits_t );
+		g_csgo.InvalidatePhysicsRecursive.as< InvalidatePhysicsRecursive_t >( )( this, bits );
 	}
 
-	__forceinline void SetAbsAngles(const ang_t &angles) {
-		using SetAbsAngles_t = void(__thiscall *)(decltype(this), const ang_t &);
-		g_csgo.SetAbsAngles.as< SetAbsAngles_t >()(this, angles);
+	__forceinline void SetAbsAngles( const ang_t& angles ) {
+		using SetAbsAngles_t = void( __thiscall* )( decltype( this ), const ang_t& );
+		g_csgo.SetAbsAngles.as< SetAbsAngles_t >( )( this, angles );
 	}
 
-	__forceinline void SetAbsOrigin(const vec3_t &origin) {
-		using SetAbsOrigin_t = void(__thiscall *)(decltype(this), const vec3_t &);
-		g_csgo.SetAbsOrigin.as< SetAbsOrigin_t >()(this, origin);
+	__forceinline void SetAbsOrigin( const vec3_t& origin ) {
+		using SetAbsOrigin_t = void( __thiscall* )( decltype( this ), const vec3_t& );
+		g_csgo.SetAbsOrigin.as< SetAbsOrigin_t >( )( this, origin );
 	}
 
-	__forceinline void SetAbsVelocity(const vec3_t &velocity) {
-		using SetAbsVelocity_t = void(__thiscall *)(decltype(this), const vec3_t &);
-		g_csgo.SetAbsVelocity.as< SetAbsVelocity_t >()(this, velocity);
+	__forceinline void SetAbsVelocity( const vec3_t& velocity ) {
+		using SetAbsVelocity_t = void( __thiscall* )( decltype( this ), const vec3_t& );
+		g_csgo.SetAbsVelocity.as< SetAbsVelocity_t >( )( this, velocity );
 	}
 
-	__forceinline void AddEffect(int effects) {
-		m_fEffects() |= effects;
+	__forceinline void AddEffect( int effects ) {
+		m_fEffects( ) |= effects;
 	}
 
-	__forceinline int get_class_id() {
-		ClientClass *cc{ GetClientClass() };
+	__forceinline int get_class_id( ) {
+		ClientClass* cc{ GetClientClass( ) };
 
-		return (cc) ? cc->m_ClassID : -1;
+		return ( cc ) ? cc->m_ClassID : -1;
 	}
 
-	__forceinline bool is(hash32_t hash) {
-		return g_netvars.GetClientID(hash) == get_class_id();
+	__forceinline bool is( hash32_t hash ) {
+		return g_netvars.GetClientID( hash ) == get_class_id( );
 	}
 };
 
-class CCSGOPlayerAnimState {
+/*class CCSGOPlayerAnimState {
 public:
-	PAD(0x1C);				// 0x0000
-	Player *m_outer;			// 0x001C
-	PAD(0x40);				// 0x0020
-	Player *m_player;			// 0x0060
-	PAD(0x8);					// 0x0064
+	PAD( 0x1C );				// 0x0000
+	Player* m_outer;			// 0x001C
+	PAD( 0x40 );				// 0x0020
+	Player* m_player;			// 0x0060
+	PAD( 0x8 );					// 0x0064
 	float   m_time;				// 0x006C
 	int     m_frame;			// 0x0070
 	float   m_update_delta;		// 0x0074
@@ -434,21 +488,124 @@ public:
 	float   m_eye_pitch;		// 0x007C
 	float   m_goal_feet_yaw;	// 0x0080
 	float   m_cur_feet_yaw;		// 0x0084
-	PAD(0x1C);				// 0x0088
+	PAD( 0x1C );				// 0x0088
 	float   m_dip_cycle;        // 0x00A4
 	float   m_dip_adj;          // 0x00A8
-	PAD(0x40);				// 0x00A8
+	PAD( 0x40 );				// 0x00A8
 	float   m_speed;			// 0x00EC
 	float   m_fall_velocity;    // 0x00F0
-	PAD(0x14);				// 0x00F0
+	PAD( 0x14 );				// 0x00F0
 	bool    m_ground;			// 0x0108
 	bool    m_land;             // 0x0109
-	PAD(0x2);					// 0x010A 
-	PAD(0x21C);				// 0x010C
+	PAD( 0x2 );					// 0x010A
+	PAD( 0x21C );				// 0x010C
 	bool    m_dip_air;			// 0x0328
-	PAD(0x12);				// 0x0329
+	PAD( 0x12 );				// 0x0329
 	float   m_min_pitch;        // 0x033C
-	PAD(0x4);					// 0x0340
+	PAD( 0x4 );					// 0x0340
+};*/ // size: 0x344
+
+class CCSGOPlayerAnimState {
+public:
+
+	char pad[ 3 ];
+	char unknown;
+	char pad2[ 91 ];
+	Player* m_baseEntity;
+	void* m_activeWeapon;
+	void* m_lastActiveWeapon;
+	float m_flLastClientSideAnimationUpdateTime;
+	int m_iLastClientSideAnimationUpdateFramecount;
+	float m_flAnimUpdateDelta;
+	float m_flEyeYaw;
+	float m_flEyePitch;
+	float m_flGoalFeetYaw;
+	float m_flCurrentFeetYaw;
+	float m_flCurrentTorsoYaw;
+	float m_flLeanVelocity;
+	float m_flLeanAmount;
+	char pad4[ 4 ];
+	float m_flFeetCycle;
+	float m_flFeetYawRate;
+	float m_flUnknown2;
+	float m_flDuckAmount;
+	float m_flLandingDuckAdditiveSomething;
+	float unknown3;
+	vec3_t m_vecOrigin;
+	vec3_t m_vecLastOrigin;
+	vec3_t m_vecVelocity;
+	vec3_t m_vecMoveSpeed;
+	vec3_t m_vecMove;
+	float m_flSpeed;
+	float m_flSpeedUp;
+	float m_flSpeedNormalized;
+	float m_flFeetSpeedForwardsOrSideways;
+	float m_flFeetSpeedForwardsOrSidewaysFraction;
+	float m_flTimeSinceStartedMoving;
+	float m_flTimeSinceStoppedMoving;
+	bool m_bOnGround;
+	unsigned char m_szInHitGroundAnimation;
+	char pad7[ 10 ];
+	float m_flLastOriginZ;
+	float m_flHeadHeightOrOffsetFromHittingGroundAnimation;
+	float m_flStopToFullRunningFraction;
+	bool m_bJust_Landed;
+	bool m_bJust_LeftGround;
+	char pad_0120[2];
+	float m_flDuckRate;
+	bool m_bOnLadder;
+	char pad_0128[3];
+	float m_flLadderCycle;
+	float m_flLadderWeight;
+	bool m_bNotRunning;
+	char pad_0135[3];
+	bool m_bInBalanceAdjust;
+	char pad_0141[3];
+	void* m_Modifiers;
+	int gap148[1];
+	float m_flTimeOfLastInjury;
+	float m_flLastSetupLeanCurtime;
+	vec3_t m_vecLastSetupLeanVelocity;
+	vec3_t m_vecSetupLeanVelocityDelta;
+	vec3_t m_vecSetupLeanVelocityInterpolated;
+	float m_flLeanWeight;
+	int m_iUnknownIntArr2[2];
+	bool m_bFlashed;
+	char m_bFlashedPad[3];
+	float m_flStrafeWeight;
+	int m_iUnknownint3;
+	float m_flStrafeCycle;
+	int m_iStrafeSequence;
+	bool m_bStrafing;
+	char m_bStrafingPad[3];
+	float m_flTotalStrafeTime;
+	int m_iUnknownInt4;
+	bool m_bUnknownBool__;
+	bool m_bIsAccelerating;
+	char pad_01AE[2];
+	void* m_arrPoseParameters[20];
+	int m_iUnknownClientInt__;
+	float m_flVelocityUnknown;
+	int m_iMoveState;
+	float m_flMovePlaybackRate;
+	float m_flUnknownFL0;
+	float m_flUnknownFL;
+	float m_flUnknownFL1;
+	float m_flMinYawServer;
+	float m_flMaxYawServer;
+	float m_flMaximumPitchServer;
+	float m_flMinimumPitchServer;
+	int m_iUnknownInt;
+	char pad_02D0[84];
+	float m_flEyePosZ;
+	bool m_bIsDucked;
+	char pad_0329[3];
+	float m_flUnknownCap1;
+	float m_flMinYaw;
+	float m_flMaxYaw;
+	float m_flMinPitch;
+	float m_flMaxPitch;
+	int m_iAnimsetVersion;
 }; // size: 0x344
 
 class CStudioHdr {
@@ -456,15 +613,15 @@ public:
 	class mstudioposeparamdesc_t {
 	public:
 		int					sznameindex;
-		__forceinline char *const name(void) const { return ((char *)this) + sznameindex; }
+		__forceinline char* const name( void ) const { return ( ( char* )this ) + sznameindex; }
 		int					flags;	// ????
 		float				start;	// starting value
 		float				end;	// ending value
 		float				loop;	// looping range, 0 for no looping, 360 for rotations, etc.
 	};
 
-	studiohdr_t *m_pStudioHdr;
-	void *m_pVModel;
+	studiohdr_t* m_pStudioHdr;
+	void* m_pVModel;
 };
 
 class C_AnimationLayer {
@@ -481,590 +638,681 @@ public:
 	float   m_weight_delta_rate;	// 0x0024
 	float   m_playback_rate;		// 0x0028
 	float   m_cycle;				// 0x002C
-	Entity *m_owner;				// 0x0030
+	Entity* m_owner;				// 0x0030
 	int     m_bits;					// 0x0034
 }; // size: 0x0038
 
 class CBoneAccessor {
 public:
-	void *m_pAnimating;
-	BoneArray *m_pBones;
+	void* m_pAnimating;
+	BoneArray* m_pBones;
 	int        m_ReadableBones;
 	int        m_WritableBones;
 };
 
 class CBoneCache {
 public:
-	BoneArray *m_pCachedBones;
-	PAD(0x8);
+	BoneArray* m_pCachedBones;
+	PAD( 0x8 );
 	int        m_CachedBoneCount;
 };
 
 class Ragdoll : public Entity {
 public:
-	__forceinline Player *GetPlayer() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle< Player * >(m_hPlayer());
+	__forceinline Player* GetPlayer( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle< Player* >( m_hPlayer( ) );
 	}
 
-	__forceinline EHANDLE &m_hPlayer() {
-		return get< EHANDLE >(g_entoffsets.m_hPlayer);
+	__forceinline EHANDLE& m_hPlayer( ) {
+		return get< EHANDLE >( g_entoffsets.m_hPlayer );
 	}
 
-	__forceinline float &m_flDeathYaw() {
-		return get< float >(g_entoffsets.m_flDeathYaw);
+	__forceinline float& m_flDeathYaw( ) {
+		return get< float >( g_entoffsets.m_flDeathYaw );
 	}
 
-	__forceinline float &m_flAbsYaw() {
-		return get< float >(g_entoffsets.m_flAbsYaw);
+	__forceinline float& m_flAbsYaw( ) {
+		return get< float >( g_entoffsets.m_flAbsYaw );
 	}
 };
 
 class Player : public Entity {
 public:
 	// netvars / etc.
-	__forceinline vec3_t &m_vecAbsVelocity() {
-		return get< vec3_t >(g_entoffsets.m_vecAbsVelocity);
+	__forceinline vec3_t& m_vecAbsVelocity( ) {
+		return get< vec3_t >( g_entoffsets.m_vecAbsVelocity );
 	}
 
-	__forceinline int &m_lifeState() {
-		return get< int >(g_entoffsets.m_lifeState);
+	__forceinline int& m_lifeState( ) {
+		return get< int >( g_entoffsets.m_lifeState );
 	}
 
-	__forceinline int &m_fFlags() {
-		return get< int >(g_entoffsets.m_fFlags);
+	__forceinline int& m_fFlags( ) {
+		return get< int >( g_entoffsets.m_fFlags );
 	}
 
-	__forceinline int &m_MoveType() {
-		return get< int >(g_entoffsets.m_MoveType);
+	__forceinline int& m_MoveType( ) {
+		return get< int >( g_entoffsets.m_MoveType );
 	}
 
-	__forceinline int &m_iHealth() {
-		return get< int >(g_entoffsets.m_iHealth);
+	__forceinline int& m_iHealth( ) {
+		return get< int >( g_entoffsets.m_iHealth );
 	}
 
-	__forceinline int &m_iAccount() {
-		return get< int >(g_entoffsets.m_iAccount);
+	__forceinline int& m_iAccount( ) {
+		return get< int >( g_entoffsets.m_iAccount );
 	}
 
-	__forceinline bool &m_bHasDefuser() {
-		return get< bool >(g_entoffsets.m_bHasDefuser);
+	__forceinline int& m_hViewModel( ) {
+		return get< int >( g_entoffsets.m_hViewModel );
 	}
 
-	__forceinline int &m_nHitboxSet() {
-		return get< int >(g_entoffsets.m_nHitboxSet);
+	__forceinline bool& m_bHasDefuser( ) {
+		return get< bool >( g_entoffsets.m_bHasDefuser );
 	}
 
-	__forceinline ang_t &m_angAbsRotation() {
-		return get< ang_t >(g_entoffsets.m_angAbsRotation);
+	__forceinline int& m_nHitboxSet( ) {
+		return get< int >( g_entoffsets.m_nHitboxSet );
 	}
 
-	__forceinline ang_t &m_angRotation() {
-		return get< ang_t >(g_entoffsets.m_angRotation);
+	__forceinline ang_t& m_angAbsRotation( ) {
+		return get< ang_t >( g_entoffsets.m_angAbsRotation );
 	}
 
-	__forceinline ang_t &m_angNetworkAngles() {
-		return get< ang_t >(g_entoffsets.m_angNetworkAngles);
+	__forceinline ang_t& m_angRotation( ) {
+		return get< ang_t >( g_entoffsets.m_angRotation );
 	}
 
-	__forceinline bool m_bIsLocalPlayer() {
+	__forceinline ang_t& m_angNetworkAngles( ) {
+		return get< ang_t >( g_entoffsets.m_angNetworkAngles );
+	}
+
+	__forceinline bool m_bIsLocalPlayer( ) {
 		// .text:101E0078 674     84 C0				   test    al, al          ; Logical Compare
 		// .text:101E007A 674     74 17				   jz      short loc_101E0093; Jump if Zero( ZF = 1 )
 		// .text:101E007C 674     8A 83 F8 35 00 00	   mov     al, [ ebx + 35F8h ]
-		return get< bool >(g_csgo.IsLocalPlayer);
+		return get< bool >( g_csgo.IsLocalPlayer );
 	}
 
-	__forceinline CCSGOPlayerAnimState *m_PlayerAnimState() {
+	__forceinline CCSGOPlayerAnimState* m_PlayerAnimState( ) {
 		// .text:1037A5B8 00C     E8 E3 40 E6 FF         call    C_BasePlayer__Spawn ; Call Procedure
 		// .text:1037A5BD 00C     80 BE E1 39 00 00 00   cmp     byte ptr[ esi + 39E1h ], 0; Compare Two Operands
 		// .text:1037A5C4 00C     74 48                  jz      short loc_1037A60E; Jump if Zero( ZF = 1 )
 		// .text:1037A5C6 00C     8B 8E 74 38 00 00      mov     ecx, [ esi + 3874h ]; this
 		// .text:1037A5CC 00C     85 C9                  test    ecx, ecx; Logical Compare
 		// .text:1037A5CE 00C     74 3E                  jz      short loc_1037A60E; Jump if Zero( ZF = 1 )
-		return get< CCSGOPlayerAnimState * >(g_csgo.PlayerAnimState);
+		return get< CCSGOPlayerAnimState* >( g_csgo.PlayerAnimState );
 	}
 
-	__forceinline CStudioHdr *m_studioHdr() {
+	__forceinline void SetPlayerAnimState( CCSGOPlayerAnimState* state ) {
+		// .text:1037A5B8 00C     E8 E3 40 E6 FF         call    C_BasePlayer__Spawn ; Call Procedure
+		// .text:1037A5BD 00C     80 BE E1 39 00 00 00   cmp     byte ptr[ esi + 39E1h ], 0; Compare Two Operands
+		// .text:1037A5C4 00C     74 48                  jz      short loc_1037A60E; Jump if Zero( ZF = 1 )
+		// .text:1037A5C6 00C     8B 8E 74 38 00 00      mov     ecx, [ esi + 3874h ]; this
+		// .text:1037A5CC 00C     85 C9                  test    ecx, ecx; Logical Compare
+		// .text:1037A5CE 00C     74 3E                  jz      short loc_1037A60E; Jump if Zero( ZF = 1 )
+		set< CCSGOPlayerAnimState* >( g_csgo.PlayerAnimState, state );
+	}
+
+	__forceinline CStudioHdr* m_studioHdr( ) {
 		// .text:1017E902 08C    8B 86 3C 29 00 00    mov     eax, [ esi + 293Ch ]
 		// .text:1017E908 08C    89 44 24 10          mov[ esp + 88h + var_78 ], eax
-		return get< CStudioHdr * >(g_csgo.studioHdr);
+		return get< CStudioHdr* >( g_csgo.studioHdr );
 	}
 
-	__forceinline ulong_t &m_iMostRecentModelBoneCounter() {
+	__forceinline ulong_t& m_iMostRecentModelBoneCounter( ) {
 		// .text:101AC9A9 000    89 81 80 26 00 00    mov[ ecx + 2680h ], eax
-		return get< ulong_t >(g_csgo.MostRecentModelBoneCounter);
+		return get< ulong_t >( g_csgo.MostRecentModelBoneCounter );
 	}
 
-	__forceinline float &m_flLastBoneSetupTime() {
+	__forceinline float& m_flLastBoneSetupTime( ) {
 		// .text:101AC99F 000    C7 81 14 29 00 00 FF FF+    mov     dword ptr [ecx+2914h], 0FF7FFFFFh;
-		return get< float >(g_csgo.LastBoneSetupTime);
+		return get< float >( g_csgo.LastBoneSetupTime );
 	}
 
-	__forceinline int &m_nTickBase() {
-		return get< int >(g_entoffsets.m_nTickBase);
+	__forceinline int& m_nTickBase( ) {
+		return get< int >( g_entoffsets.m_nTickBase );
 	}
 
-	__forceinline float &m_flNextAttack() {
-		return get< float >(g_entoffsets.m_flNextAttack);
+	__forceinline float& m_flNextAttack( ) {
+		return get< float >( g_entoffsets.m_flNextAttack );
 	}
 
-	__forceinline float &m_flDuckAmount() {
-		return get< float >(g_entoffsets.m_flDuckAmount);
+	__forceinline float& m_flDuckAmount( ) {
+		return get< float >( g_entoffsets.m_flDuckAmount );
 	}
 
-	__forceinline float &m_flSimulationTime() {
-		return get< float >(g_entoffsets.m_flSimulationTime);
+	__forceinline float& m_flSimulationTime( ) {
+		return get< float >( g_entoffsets.m_flSimulationTime );
 	}
 
-	__forceinline float &m_flOldSimulationTime() {
-		return get< float >(g_entoffsets.m_flOldSimulationTime);
+	__forceinline float& m_flOldSimulationTime( ) {
+		return get< float >( g_entoffsets.m_flOldSimulationTime );
 	}
 
-	__forceinline float &m_flLowerBodyYawTarget() {
-		return get< float >(g_entoffsets.m_flLowerBodyYawTarget);
+	__forceinline matrix3x4_t& m_pCoordFrame( ) {
+		return get< matrix3x4_t >( g_entoffsets.m_pCoordFrame );
 	}
 
-	__forceinline float &m_fImmuneToGunGameDamageTime() {
-		return get< float >(g_entoffsets.m_fImmuneToGunGameDamageTime);
+	__forceinline float& m_flLowerBodyYawTarget( ) {
+		return get< float >( g_entoffsets.m_flLowerBodyYawTarget );
 	}
 
-	__forceinline bool &m_bHasHelmet() {
-		return get< bool >(g_entoffsets.m_bHasHelmet);
+	__forceinline float& m_fImmuneToGunGameDamageTime( ) {
+		return get< float >( g_entoffsets.m_fImmuneToGunGameDamageTime );
 	}
 
-	__forceinline bool &m_bClientSideAnimation() {
-		return get< bool >(g_entoffsets.m_bClientSideAnimation);
+	__forceinline bool& m_bGunGameImmunity( ) {
+		return get< bool >( g_entoffsets.m_bGunGameImmunity );
 	}
 
-	__forceinline bool &m_bHasHeavyArmor() {
-		return get< bool >(g_entoffsets.m_bHasHeavyArmor);
+	__forceinline bool& m_bHasHelmet( ) {
+		return get< bool >( g_entoffsets.m_bHasHelmet );
 	}
 
-	__forceinline bool &m_bIsScoped() {
-		return get< bool >(g_entoffsets.m_bIsScoped);
+	__forceinline bool& m_bClientSideAnimation( ) {
+		return get< bool >( g_entoffsets.m_bClientSideAnimation );
 	}
 
-	__forceinline bool &m_bDucking() {
-		return get< bool >(g_entoffsets.m_bDucking);
+	__forceinline bool& m_bHasHeavyArmor( ) {
+		return get< bool >( g_entoffsets.m_bHasHeavyArmor );
 	}
 
-	__forceinline bool &m_bSpotted() {
-		return get< bool >(g_entoffsets.m_bSpotted);
+	__forceinline bool& m_bIsScoped( ) {
+		return get< bool >( g_entoffsets.m_bIsScoped );
 	}
 
-	__forceinline int &m_iObserverMode() {
-		return get< int >(g_entoffsets.m_iObserverMode);
+	__forceinline bool& m_bDucking( ) {
+		return get< bool >( g_entoffsets.m_bDucking );
 	}
 
-	__forceinline int &m_ArmorValue() {
-		return get< int >(g_entoffsets.m_ArmorValue);
+	__forceinline int& m_nNextThinkTick( ) {
+		return get<int>( g_entoffsets.m_nNextThinkTick );
 	}
 
-	__forceinline float &m_flMaxspeed() {
-		return get< float >(g_entoffsets.m_flMaxspeed);
+	__forceinline bool& m_bSpotted( ) {
+		return get< bool >( g_entoffsets.m_bSpotted );
 	}
 
-	__forceinline float &m_surfaceFriction() {
-		return get< float >(g_entoffsets.m_surfaceFriction);
+	__forceinline int& m_iOcclusionFlags( ) {
+		return get<int>( g_entoffsets.m_iOcclusionFlags );
 	}
 
-	__forceinline float &m_flFlashBangTime() {
-		return get< float >(g_entoffsets.m_flFlashBangTime);
+	__forceinline int& m_iOcclusionFramecount( ) {
+		return get<int>( g_entoffsets.m_iOcclusionFramecount );
 	}
 
-	__forceinline ang_t &m_angEyeAngles() {
-		return get< ang_t >(g_entoffsets.m_angEyeAngles);
+	__forceinline int& m_iObserverMode( ) {
+		return get< int >( g_entoffsets.m_iObserverMode );
 	}
 
-	__forceinline ang_t &m_aimPunchAngle() {
-		return get< ang_t >(g_entoffsets.m_aimPunchAngle);
+	__forceinline int& m_ArmorValue( ) {
+		return get< int >( g_entoffsets.m_ArmorValue );
 	}
 
-	__forceinline ang_t &m_viewPunchAngle() {
-		return get< ang_t >(g_entoffsets.m_viewPunchAngle);
+	__forceinline float& m_flMaxspeed( ) {
+		return get< float >( g_entoffsets.m_flMaxspeed );
 	}
 
-	__forceinline ang_t &m_aimPunchAngleVel() {
-		return get< ang_t >(g_entoffsets.m_aimPunchAngleVel);
+	__forceinline float& m_surfaceFriction( ) {
+		return get< float >( g_entoffsets.m_surfaceFriction );
 	}
 
-	__forceinline vec3_t &m_vecViewOffset() {
-		return get< vec3_t >(g_entoffsets.m_vecViewOffset);
+	__forceinline float& m_flFlashBangTime( ) {
+		return get< float >( g_entoffsets.m_flFlashBangTime );
 	}
 
-	__forceinline CUserCmd &m_PlayerCommand() {
-		return get< CUserCmd >(g_entoffsets.m_PlayerCommand);
+	__forceinline ang_t& m_angEyeAngles( ) {
+		return get< ang_t >( g_entoffsets.m_angEyeAngles );
 	}
 
-	__forceinline CUserCmd *&m_pCurrentCommand() {
-		return get< CUserCmd * >(g_entoffsets.m_pCurrentCommand);
+	__forceinline ang_t& m_aimPunchAngle( ) {
+		return get< ang_t >( g_entoffsets.m_aimPunchAngle );
 	}
 
-	__forceinline int &m_iEFlags() {
-		return get< int >(g_entoffsets.m_iEFlags);
+	__forceinline ang_t& m_viewPunchAngle( ) {
+		return get< ang_t >( g_entoffsets.m_viewPunchAngle );
 	}
 
-	__forceinline float *m_flPoseParameter() {
-		return (float *)((uintptr_t)this + g_entoffsets.m_flPoseParameter);
+	__forceinline ang_t& m_aimPunchAngleVel( ) {
+		return get< ang_t >( g_entoffsets.m_aimPunchAngleVel );
 	}
 
-	__forceinline CBaseHandle *m_hMyWearables() {
-		return (CBaseHandle *)((uintptr_t)this + g_entoffsets.m_hMyWearables);
+	__forceinline vec3_t& m_vecViewOffset( ) {
+		return get< vec3_t >( g_entoffsets.m_vecViewOffset );
 	}
 
-	__forceinline CBoneCache &m_BoneCache() {
+	__forceinline CUserCmd& m_PlayerCommand( ) {
+		return get< CUserCmd >( g_entoffsets.m_PlayerCommand );
+	}
+
+	__forceinline CUserCmd*& m_pCurrentCommand( ) {
+		return get< CUserCmd* >( g_entoffsets.m_pCurrentCommand );
+	}
+
+	__forceinline int& m_iEFlags( ) {
+		return get< int >( g_entoffsets.m_iEFlags );
+	}
+
+	__forceinline float* m_flPoseParameter( ) {
+		return ( float* )( ( uintptr_t )this + g_entoffsets.m_flPoseParameter );
+	}
+
+	__forceinline uint32_t& GetReadableBones( ) {
+		return get< uint32_t >( g_entoffsets.ReadableBones );
+	}
+
+	__forceinline uint32_t& GetWriteableBones( ) {
+		return get< uint32_t >( g_entoffsets.WriteableBones );
+	}
+
+	__forceinline matrix3x4_t*& GetBoneArrayForWrite( ) {
+		return get< matrix3x4_t* >( g_entoffsets.BoneArrayForWrite );
+	}
+
+	__forceinline CBaseHandle* m_hMyWearables( ) {
+		return ( CBaseHandle* )( ( uintptr_t )this + g_entoffsets.m_hMyWearables );
+	}
+
+	__forceinline CBoneCache& m_BoneCache( ) {
 		// TODO; sig
-		return get< CBoneCache >(g_entoffsets.m_BoneCache);
+		return get< CBoneCache >( g_entoffsets.m_BoneCache );
 	}
 
-	__forceinline EHANDLE &m_hObserverTarget() {
-		return get< EHANDLE >(g_entoffsets.m_hObserverTarget);
+	__forceinline matrix3x4_t**& m_BoneCache2( ) {
+		// TODO; sig
+		return get< matrix3x4_t** >( g_entoffsets.m_BoneCache );
 	}
 
-	__forceinline EHANDLE &m_hActiveWeapon() {
-		return get< EHANDLE >(g_entoffsets.m_hActiveWeapon);
+	__forceinline EHANDLE& m_hObserverTarget( ) {
+		return get< EHANDLE >( g_entoffsets.m_hObserverTarget );
 	}
 
-	__forceinline EHANDLE &m_hGroundEntity() {
-		return get< EHANDLE >(g_entoffsets.m_hGroundEntity);
+	__forceinline EHANDLE& m_hActiveWeapon( ) {
+		return get< EHANDLE >( g_entoffsets.m_hActiveWeapon );
 	}
 
-	__forceinline CBaseHandle *m_hMyWeapons() {
-		return (CBaseHandle *)((uintptr_t)this + g_entoffsets.m_hMyWeapons);
+	__forceinline EHANDLE& m_hGroundEntity( ) {
+		return get< EHANDLE >( g_entoffsets.m_hGroundEntity );
 	}
 
-	__forceinline C_AnimationLayer *m_AnimOverlay() {
+	__forceinline CBaseHandle* m_hMyWeapons( ) {
+		return ( CBaseHandle* )( ( uintptr_t )this + g_entoffsets.m_hMyWeapons );
+	}
+
+	__forceinline C_AnimationLayer* m_AnimOverlay( ) {
 		// .text:1017EAB1 08C    8B 47 1C                mov     eax, [edi+1Ch]
 		// .text:1017EAB4 08C    8D 0C D5 00 00 00 00    lea     ecx, ds:0[ edx * 8 ]; Load Effective Address
 		// .text:1017EABB 08C    2B CA                   sub     ecx, edx; Integer Subtraction
 		// .text:1017EABD 08C    8B 80 70 29 00 00       mov     eax, [ eax + 2970h ]
 		// .text:1017EAC3 08C    8D 34 C8                lea     esi, [ eax + ecx * 8 ]; Load Effective Address
 		// .text:1017EAC6
-		return get< C_AnimationLayer * >(g_csgo.AnimOverlay);
+		return get< C_AnimationLayer* >( g_csgo.AnimOverlay );
 	}
 
-	__forceinline float &m_flSpawnTime() {
+	__forceinline float& m_flSpawnTime( ) {
 		// .text:10381AB3 00C    F3 0F 10 49 10             movss   xmm1, dword ptr [ecx+10h] ; Move Scalar Single-FP
 		// .text:10381AB8 00C    F3 0F 5C 88 90 A2 00 00    subss   xmm1, dword ptr[ eax + 0A290h ]; Scalar Single - FP Subtract
-		return get< float >(g_csgo.SpawnTime);
-	}
+		return get< float >( g_csgo.SpawnTime );
+	}	
 
-	__forceinline CBoneAccessor &m_BoneAccessor() {
+	__forceinline CBoneAccessor& m_BoneAccessor( ) {
 		// .text:101A9253 1C4    C7 81 A0 26 00 00 00 FF 0F 00    mov     dword ptr[ ecx + 26A0h ], 0FFF00h
 		// .text:101A925D 1C4    C7 81 9C 26 00 00 00 FF 0F 00    mov     dword ptr[ ecx + 269Ch ], 0FFF00h
 		// .text:101A9267 1C4    8B 10                            mov     edx, [ eax ]
 		// .text:101A9269 1C4    8D 81 94 26 00 00                lea     eax, [ ecx + 2694h ]; Load Effective Address
 		// .text:101A926F 1C4    50                               push    eax
-		return get< CBoneAccessor >(g_csgo.BoneAccessor);
+		return get< CBoneAccessor >( g_csgo.BoneAccessor );
 	}
+
+	__forceinline float& m_flVelocityModifier( ) {
+		// .text:10381AB3 00C    F3 0F 10 49 10             movss   xmm1, dword ptr [ecx+10h] ; Move Scalar Single-FP
+		// .text:10381AB8 00C    F3 0F 5C 88 90 A2 00 00    subss   xmm1, dword ptr[ eax + 0A290h ]; Scalar Single - FP Subtract
+		return get< float >( 0xA38C );
+	}
+
+	__forceinline float GetMaxBodyRotation( ) {
+		auto animstate = uintptr_t( this->m_PlayerAnimState( ) );
+
+		float
+			rate = 180,
+			duckammount = *( float* )( animstate + 0xA4 ),
+			speedfraction = std::max( 0.f, std::min( *( float* )( animstate + 0xF8 ), 1.f ) ),
+			speedfactor = std::max( 0.f, std::min( 1.f, *( float* )( animstate + 0xFC ) ) );
+
+		float
+			unk1 = ( ( *( float* )( animstate + 0x11C ) * -0.30000001 ) - 0.19999999 ) * speedfraction,
+			unk2 = unk1 + 1.f;
+
+		if( duckammount > 0 )
+			unk2 += ( ( duckammount * speedfactor ) * ( 0.5f - unk2 ) );
+
+		return *( float* )( animstate + 0x334 ) * unk2;
+	};
 
 public:
 	enum indices : size_t {
 		GETREFEHANDLE = 2,
 		TESTHITBOXES = 52,
-		BUILDTRANSFORMATIONS = 184,
-		DOEXTRABONEPROCESSING = 192,
-		STANDARDBLENDINGRULES = 200,
-		UPDATECLIENTSIDEANIMATION = 218, // 55 8B EC 51 56 8B F1 80 BE ? ? ? ? ? 74 36
-		GETACTIVEWEAPON = 262,
-		GETEYEPOS = 163,
-		GETFOV = 321,
+		THINK = 138,
+		BUILDTRANSFORMATIONS = 189,
+		DOEXTRABONEPROCESSING = 197,
+		STANDARDBLENDINGRULES = 205,
+		UPDATECLIENTSIDEANIMATION = 223, // 55 8B EC 51 56 8B F1 80 BE ? ? ? ? ? 74 36
+		GETACTIVEWEAPON = 267,
+		WEAPONSHOOTPOSITION = 282,
+		CALCVIEW = 276,
+		PRETHINK = 317,
+		RUNPOSTTHINK = 319,
+		GETFOV = 326,
 		UPDATECOLLISIONBOUNDS = 329 // 56 57 8B F9 8B 0D ? ? ? ? F6 87 ? ? ? ? ?
 	};
 
 public:
 	// virtuals.
-	__forceinline ulong_t GetRefEHandle() {
-		using GetRefEHandle_t = ulong_t(__thiscall *)(decltype(this));
-		return util::get_method< GetRefEHandle_t >(this, GETREFEHANDLE)(this);
+	__forceinline ulong_t GetRefEHandle( ) {
+		if( !this->GetIClientUnknown( ) )
+			return NULL;
+
+		return this->GetIClientUnknown( )->GetRefEHandle( );
 	}
 
-	__forceinline void BuildTransformations(CStudioHdr *hdr, vec3_t *pos, quaternion_t *q, const matrix3x4_t &transform, int mask, uint8_t *computed) {
-		using BuildTransformations_t = void(__thiscall *)(decltype(this), CStudioHdr *, vec3_t *, quaternion_t *, matrix3x4_t const &, int, uint8_t *);
-		return util::get_method< BuildTransformations_t >(this, BUILDTRANSFORMATIONS)(this, hdr, pos, q, transform, mask, computed);
+	__forceinline void BuildTransformations( CStudioHdr* hdr, vec3_t* pos, quaternion_t* q, const matrix3x4a_t& transform, int mask, uint8_t* computed ) {
+		using BuildTransformations_t = void( __thiscall* )( decltype( this ), CStudioHdr*, vec3_t*, quaternion_t*, matrix3x4a_t const&, int, uint8_t* );
+		return util::get_method< BuildTransformations_t >( this, BUILDTRANSFORMATIONS )( this, hdr, pos, q, transform, mask, computed );
 	}
 
-	__forceinline void StandardBlendingRules(CStudioHdr *hdr, vec3_t *pos, quaternion_t *q, float time, int mask) {
-		using StandardBlendingRules_t = void(__thiscall *)(decltype(this), CStudioHdr *, vec3_t *, quaternion_t *, float, int);
-		return util::get_method< StandardBlendingRules_t >(this, STANDARDBLENDINGRULES)(this, hdr, pos, q, time, mask);
+	__forceinline void StandardBlendingRules( CStudioHdr* hdr, vec3_t* pos, quaternion_t* q, float time, int mask ) {
+		using StandardBlendingRules_t = void( __thiscall* )( decltype( this ), CStudioHdr*, vec3_t*, quaternion_t*, float, int );
+		return util::get_method< StandardBlendingRules_t >( this, STANDARDBLENDINGRULES )( this, hdr, pos, q, time, mask );
 	}
 
-	__forceinline float GetFOV() {
-		return util::get_method< float(__thiscall *)(decltype(this)) >(this, GETFOV)(this);
+	__forceinline float GetFOV( ) {
+		return util::get_method< float( __thiscall* )( decltype( this ) ) >( this, GETFOV )( this );
 	}
 
-	__forceinline const vec3_t &WorldSpaceCenter() {
-		return util::get_method< const vec3_t &(__thiscall *)(void *) >(this, WORLDSPACECENTER)(this);
+	__forceinline const vec3_t& WorldSpaceCenter( ) {
+		return util::get_method< const vec3_t& ( __thiscall* )( void* ) >( this, WORLDSPACECENTER )( this );
 	}
 
-	__forceinline void GetEyePos(vec3_t *pos) {
-		util::get_method< void(__thiscall *)(decltype(this), vec3_t *) >(this, GETEYEPOS)(this, pos);
+	__forceinline void EyePosition( vec3_t* pos ) {
+		util::get_method< float* ( __thiscall* )( Player*, vec3_t* ) >( this, 168 )( this, pos );
 	}
 
-	__forceinline void ModifyEyePosition(CCSGOPlayerAnimState *state, vec3_t *pos) {
-		if (!state) {
-			return;
+	__forceinline vec3_t Weapon_ShootPosition( ) {
+		if( g_hvh.m_fake_duck && this->index( ) == g_csgo.m_engine->GetLocalPlayer( ) ) {
+			vec3_t origin = m_vecOrigin( );
+
+			vec3_t vDuckHullMin = g_csgo.m_game_movement->GetPlayerMins( true );
+			vec3_t vStandHullMin = g_csgo.m_game_movement->GetPlayerMins( false );
+
+			float fMore = ( vDuckHullMin.z - vStandHullMin.z );
+
+			vec3_t vecDuckViewOffset = g_csgo.m_game_movement->GetPlayerViewOffset( true );
+			vec3_t vecStandViewOffset = g_csgo.m_game_movement->GetPlayerViewOffset( false );
+			float duckFraction = m_flDuckAmount( );
+
+			float tempz = ( ( vecDuckViewOffset.z - fMore ) * duckFraction ) +
+				( vecStandViewOffset.z * ( 1 - duckFraction ) );
+
+			origin.z += tempz;
+
+			return origin;
 		}
 
-		//  if ( *(this + 0x50) && (*(this + 0x100) || *(this + 0x94) != 0.0 || !sub_102C9480(*(this + 0x50))) )
-		if (state->m_player &&
-			(state->m_land || state->m_player->m_flDuckAmount() != 0.f || !state->m_player->GetGroundEntity())) {
-			auto v5 = 8;
+		vec3_t dummy;
+		EyePosition( &dummy );
 
-			if (v5 != -1 && state->m_player->m_BoneCache().m_pCachedBones) {
-				vec3_t head_pos(
-					state->m_player->m_BoneCache().m_pCachedBones[8][0][3],
-					state->m_player->m_BoneCache().m_pCachedBones[8][1][3],
-					state->m_player->m_BoneCache().m_pCachedBones[8][2][3]);
-
-				auto v12 = head_pos;
-				auto v7 = v12.z + 1.7;
-
-				auto v8 = pos->z;
-				if (v8 > v7) // if (v8 > (v12 + 1.7))
-				{
-					float v13 = 0.f;
-					float v3 = (*pos).z - v7;
-
-					float v4 = (v3 - 4.f) * 0.16666667;
-					if (v4 >= 0.f)
-						v13 = std::fminf(v4, 1.f);
-
-					(*pos).z = (((v7 - (*pos).z)) * (((v13 * v13) * 3.0) - (((v13 * v13) * 2.0) * v13))) + (*pos).z;
-				}
-			}
-		}
-	}
-
-	__forceinline vec3_t GetShootPosition() {
-		/*
-		float *__thiscall sub_103A4A60(_DWORD *this, float *a2)
-		{
-			int v2; // edi
-			_DWORD *v3; // ecx
-
-			v2 = this;
-			(*(*this + 652))(a2);
-			if ( *(v2 + 0x39E1) )
-			{
-				v3 = *(v2 + 0x3874);
-				if ( v3 )
-					sub_103B4130(v3, a2);
-				}
-				return a2;
-			}
-		*/
-
-		vec3_t pos;
-
-		GetEyePos(&pos);
-
-		if (*reinterpret_cast <int32_t *> (uintptr_t(this) + 0x39E1)) {
-			auto v3 = m_PlayerAnimState();
-			if (v3) {
-				ModifyEyePosition(v3, &pos);
+		if( *reinterpret_cast < int32_t* > ( uintptr_t( this ) + 0x3AB4 ) ) {
+			auto animstate = this->m_PlayerAnimState( );
+			if( animstate ) {
+				ModifyEyePosition( animstate, &dummy );
 			}
 		}
 
-		return pos;
+		return dummy;
 	}
 
-	__forceinline void UpdateClientSideAnimation() {
-		return util::get_method< void(__thiscall *)(decltype(this)) >(this, UPDATECLIENTSIDEANIMATION)(this);
+	__forceinline void UpdateClientSideAnimation( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, UPDATECLIENTSIDEANIMATION )( this );
 	}
 
-	__forceinline void UpdateCollisionBounds() {
-		return util::get_method< void(__thiscall *)(decltype(this)) >(this, UPDATECOLLISIONBOUNDS)(this);
+	__forceinline void UpdateCollisionBounds( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, UPDATECOLLISIONBOUNDS )( this );
 	}
 
 	// misc funcs.
-	__forceinline CStudioHdr *GetModelPtr() {
-		using LockStudioHdr_t = void(__thiscall *)(decltype(this));
+	__forceinline CStudioHdr* GetModelPtr( ) {
+		using LockStudioHdr_t = void( __thiscall* )( decltype( this ) );
 
-		if (!m_studioHdr())
-			g_csgo.LockStudioHdr.as< LockStudioHdr_t >()(this);
+		if( !m_studioHdr( ) )
+			g_csgo.LockStudioHdr.as< LockStudioHdr_t >( )( this );
 
-		return m_studioHdr();
+		return m_studioHdr( );
 	}
 
-	__forceinline Weapon *GetActiveWeapon() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon * >(m_hActiveWeapon());
+	__forceinline void PreThink( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, PRETHINK )( this );
 	}
 
-	__forceinline Entity *GetObserverTarget() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle(m_hObserverTarget());
+	__forceinline void Think( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, THINK )( this );
 	}
 
-	__forceinline Entity *GetGroundEntity() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle(m_hGroundEntity());
+	__forceinline void RunPostThink( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, RUNPOSTTHINK )( this );
 	}
 
-	__forceinline void SetAnimLayers(C_AnimationLayer *layers) {
-		std::memcpy(m_AnimOverlay(), layers, sizeof(C_AnimationLayer) * 13);
+	__forceinline void RunPreThink( ) {
+		static auto fn = pattern::find( g_csgo.m_client_dll, XOR( "55 8B EC 83 EC 10 53 56 57 8B F9 8B 87" ) ).as<bool( __thiscall* )( void*, int )>( );
+
+		if( fn( this, 0 ) )
+			PreThink( );
 	}
 
-	__forceinline void GetAnimLayers(C_AnimationLayer *layers) {
-		std::memcpy(layers, m_AnimOverlay(), sizeof(C_AnimationLayer) * 13);
+	__forceinline void RunThink( ) {
+		static auto fn = pattern::find( g_csgo.m_client_dll, XOR( "55 8B EC 56 57 8B F9 8B B7 ? ? ? ? 8B C6" ) ).as<void( __thiscall* )( int )>( );
+
+		if( m_nNextThinkTick( ) != -1 && m_nNextThinkTick( ) > 0
+			&& m_nNextThinkTick( ) < game::TIME_TO_TICKS( g_csgo.m_globals->m_curtime ) ) {
+			m_nNextThinkTick( ) = -1;
+			fn( 0 );
+			Think( );
+		}
 	}
 
-	__forceinline void SetPoseParameters(float *poses) {
-		std::memcpy(m_flPoseParameter(), poses, sizeof(float) * 24);
+	__forceinline Weapon* GetActiveWeapon( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon* >( m_hActiveWeapon( ) );
 	}
 
-	__forceinline void GetPoseParameters(float *poses) {
-		std::memcpy(poses, m_flPoseParameter(), sizeof(float) * 24);
+	__forceinline Entity* GetObserverTarget( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle( m_hObserverTarget( ) );
 	}
 
-	__forceinline bool ComputeHitboxSurroundingBox(vec3_t *mins, vec3_t *maxs) {
-		using ComputeHitboxSurroundingBox_t = bool(__thiscall *)(void *, vec3_t *, vec3_t *);
-
-		return g_csgo.ComputeHitboxSurroundingBox.as< ComputeHitboxSurroundingBox_t >()(this, mins, maxs);
+	__forceinline Entity* GetGroundEntity( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle( m_hGroundEntity( ) );
 	}
 
-	__forceinline int GetSequenceActivity(int sequence) {
-		using GetSequenceActivity_t = int(__fastcall *)(CStudioHdr *, int);
-
-		return g_csgo.GetSequenceActivity.as< GetSequenceActivity_t >()(GetModelPtr(), sequence);
+	__forceinline void SetAnimLayers( C_AnimationLayer* layers ) {
+		std::memcpy( m_AnimOverlay( ), layers, sizeof( C_AnimationLayer ) * 13 );
 	}
 
-	__forceinline bool HasC4() {
-		using HasC4_t = bool(__thiscall *)(decltype(this));
-		return g_csgo.HasC4.as< HasC4_t >()(this);
+	__forceinline void GetAnimLayers( C_AnimationLayer* layers ) {
+		std::memcpy( layers, m_AnimOverlay( ), sizeof( C_AnimationLayer ) * 13 );
 	}
 
-	__forceinline void InvalidateBoneCache() {
-		CBoneAccessor *accessor = &m_BoneAccessor();
-		if (!accessor)
+	__forceinline void SetPoseParameters( float* poses ) {
+		std::memcpy( m_flPoseParameter( ), poses, sizeof( float ) * 24 );
+	}
+
+	__forceinline void GetPoseParameters( float* poses ) {
+		std::memcpy( poses, m_flPoseParameter( ), sizeof( float ) * 24 );
+	}
+
+	__forceinline bool ComputeHitboxSurroundingBox( vec3_t* mins, vec3_t* maxs ) {
+		using ComputeHitboxSurroundingBox_t = bool( __thiscall* )( void*, vec3_t*, vec3_t* );
+
+		return g_csgo.ComputeHitboxSurroundingBox.as< ComputeHitboxSurroundingBox_t >( )( this, mins, maxs );
+	}
+
+	__forceinline int GetSequenceActivity( int sequence ) {
+		using GetSequenceActivity_t = int( __fastcall* )( CStudioHdr*, int );
+
+		return g_csgo.GetSequenceActivity.as< GetSequenceActivity_t >( )( GetModelPtr( ), sequence );
+	}
+
+	__forceinline bool HasC4( ) {
+		using HasC4_t = bool( __thiscall* )( decltype( this ) );
+		return g_csgo.HasC4.as< HasC4_t >( )( this );
+	}
+
+	__forceinline void InvalidateBoneCache( ) {
+		CBoneAccessor* accessor = &m_BoneAccessor( );
+		if( !accessor )
 			return;
 
 		accessor->m_WritableBones = 0;
 		accessor->m_ReadableBones = 0;
 
-		m_iMostRecentModelBoneCounter() = 0;
-		m_flLastBoneSetupTime() = std::numeric_limits< float >::lowest();
+		m_iMostRecentModelBoneCounter( ) = 0;
+		m_flLastBoneSetupTime( ) = std::numeric_limits< float >::lowest( );
 	}
 
-	__forceinline bool alive() {
-		return m_lifeState() == LIFE_ALIVE;
+	__forceinline bool alive( ) {
+		//return m_lifeState( ) == LIFE_ALIVE;
+		return util::get_method< bool(__thiscall*)(decltype(this)) >(this, 155)(this);
 	}
 
-	__forceinline bool enemy(Player *from) {
-		if (m_iTeamNum() != from->m_iTeamNum())
+	__forceinline bool enemy( Player* from ) {
+		if( m_iTeamNum( ) != from->m_iTeamNum( ) )
 			return true;
 
-		else if (g_csgo.mp_teammates_are_enemies->GetInt())
+		else if( g_csgo.mp_teammates_are_enemies->GetInt( ) )
 			return true;
 
 		return false;
 	}
+
+	void ModifyEyePosition( CCSGOPlayerAnimState* state, vec3_t* pos );
 };
 
 class WeaponInfo {
-private:
-	PAD(0x4);											// 0x0000
-
 public:
-	const char *m_weapon_name;						// 0x0004 -- actual weapon name, even for usp-s and revolver. ex: "weapon_revolver"
-	PAD(0xC);												// 0x0008
-	int               m_max_clip1;							// 0x0014
-	int				  m_max_clip2;							// 0x0018
-	int				  m_default_clip1;						// 0x001C
-	int		          m_default_clip2;						// 0x0020
-	int               m_max_reserve;						// 0x0024
-	PAD(0x4);												// 0x0028
-	const char *m_world_model;						// 0x002C
-	const char *m_view_model;							// 0x0030
-	const char *m_world_dropped_model;				// 0x0034
-	PAD(0x48);											// 0x0038
-	const char *m_ammo_type;							// 0x0080
-	uint8_t           pad_0084[4];						// 0x0084
-	const char *m_sfui_name;							// 0x0088
-	const char *m_deprecated_weapon_name;				// 0x008C -- shitty weapon name, shows "weapon_deagle" for revolver / etc.
-	uint8_t           pad_0090[56];						// 0x0090
-	CSWeaponType      m_weapon_type;						// 0x00C8
-	int			      m_in_game_price;						// 0x00CC
-	int               m_kill_award;							// 0x00D0
-	const char *m_animation_prefix;					// 0x00D4
-	float			  m_cycletime;							// 0x00D8
-	float			  m_cycletime_alt;						// 0x00DC
-	float			  m_time_to_idle;						// 0x00E0
-	float			  m_idle_interval;						// 0x00E4
-	bool			  m_is_full_auto;						// 0x00E5
-	PAD(0x3);												// 0x00E8
-	int               m_damage;								// 0x00EC
-	float             m_armor_ratio;						// 0x00F0
-	int               m_bullets;							// 0x00F4
-	float             m_penetration;						// 0x00F8
-	float             m_flinch_velocity_modifier_large;		// 0x00FC
-	float             m_flinch_velocity_modifier_small;		// 0x0100
-	float             m_range;								// 0x0104
-	float             m_range_modifier;						// 0x0108
-	float			  m_throw_velocity;						// 0x010C
-	PAD(0xC);												// 0x0118
-	bool			  m_has_silencer;						// 0x0119
-	PAD(0x3);												// 0x011C
-	const char *m_silencer_model;						// 0x0120
-	int				  m_crosshair_min_distance;				// 0x0124
-	int				  m_crosshair_delta_distance;			// 0x0128
-	float             m_max_player_speed;					// 0x012C
-	float             m_max_player_speed_alt;				// 0x0130
-	float			  m_spread;								// 0x0134
-	float			  m_spread_alt;							// 0x0138
-	float             m_inaccuracy_crouch;					// 0x013C
-	float             m_inaccuracy_crouch_alt;				// 0x0140
-	float             m_inaccuracy_stand;					// 0x0144
-	float             m_inaccuracy_stand_alt;				// 0x0148
-	float             m_inaccuracy_jump_initial;			// 0x014C
-	float             m_inaccuracy_jump;					// 0x0150
-	float             m_inaccuracy_jump_alt;				// 0x0154
-	float             m_inaccuracy_land;					// 0x0158
-	float             m_inaccuracy_land_alt;				// 0x015C
-	float             m_inaccuracy_ladder;					// 0x0160
-	float             m_inaccuracy_ladder_alt;				// 0x0164
-	float             m_inaccuracy_fire;					// 0x0168
-	float             m_inaccuracy_fire_alt;				// 0x016C
-	float             m_inaccuracy_move;					// 0x0170
-	float             m_inaccuracy_move_alt;				// 0x0174
-	float             m_inaccuracy_reload;					// 0x0178
-	int               m_recoil_seed;						// 0x017C
-	float			  m_recoil_angle;						// 0x0180
-	float             m_recoil_angle_alt;					// 0x0184
-	float             m_recoil_angle_variance;				// 0x0188
-	float             m_recoil_angle_variance_alt;			// 0x018C
-	float             m_recoil_magnitude;					// 0x0190
-	float             m_recoil_magnitude_alt;				// 0x0194
-	float             m_recoil_magnitude_variance;			// 0x0198
-	float             m_recoil_magnitude_variance_alt;		// 0x019C
-	float             m_recovery_time_crouch;				// 0x01A0
-	float             m_recovery_time_stand;				// 0x01A4
-	float             m_recovery_time_crouch_final;			// 0x01A8
-	float             m_recovery_time_stand_final;			// 0x01AC
-	float             m_recovery_transition_start_bullet;	// 0x01B0
-	float             m_recovery_transition_end_bullet;		// 0x01B4
-	bool			  m_unzoom_after_shot;					// 0x01B5
-	PAD(0x3);												// 0x01B8
-	bool		      m_hide_view_model_zoomed;				// 0x01B9
-	bool			  m_zoom_levels;						// 0x01BA
-	PAD(0x2);												// 0x01BC
-	int				  m_zoom_fov[2];						// 0x01C4
-	float			  m_zoom_time[3];						// 0x01D0
-	PAD(0x8);												// 0x01D8
-	float             m_addon_scale;						// 0x01DC
-	PAD(0x8);												// 0x01E4
-	int				  m_tracer_frequency;					// 0x01E8
-	int				  m_tracer_frequency_alt;				// 0x01EC
-	PAD(0x18);											// 0x0200
-	int				  m_health_per_shot;					// 0x0204
-	PAD(0x8);												// 0x020C
-	float			  m_inaccuracy_pitch_shift;				// 0x0210
-	float			  m_inaccuracy_alt_sound_threshold;		// 0x0214
-	float			  m_bot_audible_range;					// 0x0218
-	PAD(0x8);												// 0x0220
-	const char *m_wrong_team_msg;						// 0x0224
-	bool			  m_has_burst_mode;						// 0x0225
-	PAD(0x3);												// 0x0228
-	bool			  m_is_revolver;						// 0x0229
-	bool			  m_can_shoot_underwater;				// 0x022A
-	PAD(0x2);												// 0x022C			
+
+	virtual ~WeaponInfo( ) = default;
+
+	//char pad_0000[4]; //0x0000
+	char* consoleName;				// 0x0004
+	char		pad_0008[ 8 ];				// 0x0008
+	void* m_pWeaponDef;  //0x0010
+	int			iMaxClip1;					// 0x0014
+	int			iMaxClip2;					// 0x0018
+	int			iDefaultClip1;				// 0x001C
+	int			iDefaultClip2;				// 0x0020
+	char		pad_0024[ 8 ];				// 0x0024
+	char* szWorldModel;				// 0x002C
+	char* szViewModel;				// 0x0030
+	char* szDroppedModel;				// 0x0034
+	char		pad_0038[ 4 ];				// 0x0038
+	char* N0000023E;					// 0x003C
+	char		pad_0040[ 56 ];				// 0x0040
+	char* szEmptySound;				// 0x0078
+	char		pad_007C[ 4 ];				// 0x007C
+	char* szBulletType;				// 0x0080
+	char		pad_0084[ 4 ];				// 0x0084
+	char* szHudName;					// 0x0088
+	char* szWeaponName;				// 0x008C
+	char		pad_0090[ 60 ];				// 0x0090
+	int 		WeaponType;					// 0x00C8
+	int			iWeaponPrice;				// 0x00CC
+	int			iKillAward;					// 0x00D0
+	char* szAnimationPrefix;			// 0x00D4
+	float		flCycleTime;				// 0x00D8
+	float		flCycleTimeAlt;				// 0x00DC
+	float		flTimeToIdle;				// 0x00E0
+	float		flIdleInterval;				// 0x00E4
+	bool		bFullAuto;					// 0x00E8
+	char		pad_0x00E5[ 3 ];			// 0x00E9
+	int			iDamage;					// 0x00EC
+	float		flArmorRatio;				// 0x00F0
+	int			iBullets;					// 0x00F4
+	float		flPenetration;				// 0x00F8
+	float		flFlinchVelocityModifierLarge;	// 0x00FC
+	float		flFlinchVelocityModifierSmall;	// 0x0100
+	float		flRange;					// 0x0104
+	float		flRangeModifier;			// 0x0108
+	float		flThrowVelocity;			// 0x010C
+	char		pad_0x010C[ 16 ];			// 0x0110
+	bool		bHasSilencer;				// 0x011C
+	char		pad_0x0119[ 3 ];			// 0x011D
+	char* pSilencerModel;				// 0x0120
+	int			iCrosshairMinDistance;		// 0x0124
+	float		flMaxPlayerSpeed;	        // 0x0128
+	float		flMaxPlayerSpeedAlt;		// 0x012C
+	char		pad_0x0130[ 4 ];		    // 0x0130
+	float		flSpread;					// 0x0134
+	float		flSpreadAlt;				// 0x0138
+	float		flInaccuracyCrouch;			// 0x013C
+	float		flInaccuracyCrouchAlt;		// 0x0140
+	float		flInaccuracyStand;			// 0x0144
+	float		flInaccuracyStandAlt;		// 0x0148
+	float		flInaccuracyJumpInitial;	// 0x014C
+	float		flInaccuracyJump;			// 0x0150
+	float		flInaccuracyJumpAlt;		// 0x0154
+	float		flInaccuracyLand;			// 0x0158
+	float		flInaccuracyLandAlt;		// 0x015C
+	float		flInaccuracyLadder;			// 0x0160
+	float		flInaccuracyLadderAlt;		// 0x0164
+	float		flInaccuracyFire;			// 0x0168
+	float		flInaccuracyFireAlt;		// 0x016C
+	float		flInaccuracyMove;			// 0x0170
+	float		flInaccuracyMoveAlt;		// 0x0174
+	float		flInaccuracyReload;			// 0x0178
+	int			iRecoilSeed;				// 0x017C
+	float		flRecoilAngle;				// 0x0180
+	float		flRecoilAngleAlt;			// 0x0184
+	float		flRecoilAngleVariance;		// 0x0188
+	float		flRecoilAngleVarianceAlt;	// 0x018C
+	float		flRecoilMagnitude;			// 0x0190
+	float		flRecoilMagnitudeAlt;		// 0x0194
+	float		flRecoilMagnitudeVariance;	// 0x0198
+	float		flRecoilMagnitudeVarianceAlt;	// 0x019C
+	float		flRecoveryTimeCrouch;		// 0x01A0
+	float		flRecoveryTimeStand;		// 0x01A4
+	float		flRecoveryTimeCrouchFinal;	// 0x01A8
+	float		flRecoveryTimeStandFinal;	// 0x01AC
+	int			iRecoveryTransitionStartBullet;	// 0x01B0 
+	int			iRecoveryTransitionEndBullet;	// 0x01B4
+	bool		bUnzoomAfterShot;			// 0x01B8
+	bool		bHideViewModelZoomed;		// 0x01B9
+	char		pad_0x01B5[ 2 ];			// 0x01BA
+	char		iZoomLevels[ 3 ];			// 0x01BC
+	int			iZoomFOV[ 2 ];				// 0x01C0
+	float		fZoomTime[ 3 ];				// 0x01C4
+	char* szWeaponClass;				// 0x01D4
+	float		flAddonScale;				// 0x01D8
+	char		pad_0x01DC[ 4 ];			// 0x01DC
+	char* szEjectBrassEffect;			// 0x01E0
+	char* szTracerEffect;				// 0x01E4
+	int			iTracerFrequency;			// 0x01E8
+	int			iTracerFrequencyAlt;		// 0x01EC
+	char* szMuzzleFlashEffect_1stPerson;	// 0x01F0
+	char		pad_0x01F4[ 4 ];				// 0x01F4
+	char* szMuzzleFlashEffect_3rdPerson;	// 0x01F8
+	char		pad_0x01FC[ 4 ];			// 0x01FC
+	char* szMuzzleSmokeEffect;		// 0x0200
+	float		flHeatPerShot;				// 0x0204
+	char* szZoomInSound;				// 0x0208
+	char* szZoomOutSound;				// 0x020C
+	float		flInaccuracyPitchShift;		// 0x0210
+	float		flInaccuracySoundThreshold;	// 0x0214
+	float		flBotAudibleRange;			// 0x0218
+	char		pad_0x0218[ 8 ];			// 0x0220
+	char* pWrongTeamMsg;				// 0x0224
+	bool		bHasBurstMode;				// 0x0228
+	char		pad_0x0225[ 3 ];			// 0x0229
+	bool		bIsRevolver;				// 0x022C
+	bool		bCannotShootUnderwater;		// 0x0230
 };
 
 class IRefCounted {
@@ -1072,230 +1320,237 @@ private:
 	volatile long refCount;
 
 public:
-	virtual void destructor(char bDelete) = 0;
-	virtual bool OnFinalRelease() = 0;
+	virtual void destructor( char bDelete ) = 0;
+	virtual bool OnFinalRelease( ) = 0;
 
-	void unreference() {
-		if (InterlockedDecrement(&refCount) == 0 && OnFinalRelease()) {
-			destructor(1);
+	void unreference( ) {
+		if( InterlockedDecrement( &refCount ) == 0 && OnFinalRelease( ) ) {
+			destructor( 1 );
 		}
 	}
 };
 
 class Weapon : public Entity {
 public:
-	using ref_vec_t = CUtlVector< IRefCounted * >;
+	using ref_vec_t = CUtlVector< IRefCounted* >;
 
 	// netvars / etc.
-	__forceinline ref_vec_t &m_CustomMaterials() {
-		return get< ref_vec_t >(g_entoffsets.m_CustomMaterials);
+	__forceinline ref_vec_t& m_CustomMaterials( ) {
+		return get< ref_vec_t >( g_entoffsets.m_CustomMaterials );
 	}
 
-	__forceinline ref_vec_t &m_CustomMaterials2() {
-		return get< ref_vec_t >(g_entoffsets.m_CustomMaterials2);
+	__forceinline ref_vec_t& m_CustomMaterials2( ) {
+		return get< ref_vec_t >( g_entoffsets.m_CustomMaterials2 );
 	}
 
-	__forceinline ref_vec_t &m_VisualsDataProcessors() {
-		return get< ref_vec_t >(g_entoffsets.m_VisualsDataProcessors);
+	__forceinline ref_vec_t& m_VisualsDataProcessors( ) {
+		return get< ref_vec_t >( g_entoffsets.m_VisualsDataProcessors );
 	}
 
-	__forceinline bool &m_bCustomMaterialInitialized() {
-		return get< bool >(g_entoffsets.m_bCustomMaterialInitialized);
+	__forceinline bool& m_bCustomMaterialInitialized( ) {
+		return get< bool >( g_entoffsets.m_bCustomMaterialInitialized );
 	}
 
-	__forceinline int &m_iItemDefinitionIndex() {
-		return get< int >(g_entoffsets.m_iItemDefinitionIndex);
+	__forceinline short& m_iItemDefinitionIndex( ) {
+		return get< short >( g_entoffsets.m_iItemDefinitionIndex );
 	}
 
-	__forceinline int &m_iClip1() {
-		return get< int >(g_entoffsets.m_iClip1);
+	__forceinline int& m_iClip1( ) {
+		return get< int >( g_entoffsets.m_iClip1 );
 	}
 
-	__forceinline int &m_iPrimaryReserveAmmoCount() {
-		return get< int >(g_entoffsets.m_iPrimaryReserveAmmoCount);
+	__forceinline int& m_iPrimaryReserveAmmoCount( ) {
+		return get< int >( g_entoffsets.m_iPrimaryReserveAmmoCount );
 	}
 
-	__forceinline int &m_Activity() {
-		return get< int >(g_entoffsets.m_Activity);
+	__forceinline int& m_Activity( ) {
+		return get< int >( g_entoffsets.m_Activity );
 	}
 
-	__forceinline float &m_fFireDuration() {
-		return get< float >(g_entoffsets.m_fFireDuration);
+	__forceinline float& m_fFireDuration( ) {
+		return get< float >( g_entoffsets.m_fFireDuration );
 	}
 
-	__forceinline int &m_iBurstShotsRemaining() {
-		return get< int >(g_entoffsets.m_iBurstShotsRemaining);
+	__forceinline int& m_iBurstShotsRemaining( ) {
+		return get< int >( g_entoffsets.m_iBurstShotsRemaining );
 	}
 
-	__forceinline float &m_flNextPrimaryAttack() {
-		return get< float >(g_entoffsets.m_flNextPrimaryAttack);
+	__forceinline float& m_flNextPrimaryAttack( ) {
+		return get< float >( g_entoffsets.m_flNextPrimaryAttack );
 	}
 
-	__forceinline float &m_flNextSecondaryAttack() {
-		return get< float >(g_entoffsets.m_flNextSecondaryAttack);
+	__forceinline float& m_flNextSecondaryAttack( ) {
+		return get< float >( g_entoffsets.m_flNextSecondaryAttack );
 	}
 
-	__forceinline float &m_flThrowStrength() {
-		return get< float >(g_entoffsets.m_flThrowStrength);
+	__forceinline float& m_flThrowStrength( ) {
+		return get< float >( g_entoffsets.m_flThrowStrength );
 	}
 
-	__forceinline float &m_fNextBurstShot() {
-		return get< float >(g_entoffsets.m_fNextBurstShot);
+	__forceinline float& m_fNextBurstShot( ) {
+		return get< float >( g_entoffsets.m_fNextBurstShot );
 	}
 
-	__forceinline int &m_zoomLevel() {
-		return get< int >(g_entoffsets.m_zoomLevel);
+	__forceinline int& m_zoomLevel( ) {
+		return get< int >( g_entoffsets.m_zoomLevel );
 	}
 
-	__forceinline float &m_flRecoilIndex() {
-		return get< float >(g_entoffsets.m_flRecoilIndex);
+	__forceinline float& m_flRecoilIndex( ) {
+		return get< float >( g_entoffsets.m_flRecoilIndex );
 	}
 
-	__forceinline int &m_weaponMode() {
-		return get< int >(g_entoffsets.m_weaponMode);
+	__forceinline int& m_weaponMode( ) {
+		return get< int >( g_entoffsets.m_weaponMode );
 	}
 
-	__forceinline int &m_nFallbackPaintKit() {
-		return get< int >(g_entoffsets.m_nFallbackPaintKit);
+	__forceinline int& m_nFallbackPaintKit( ) {
+		return get< int >( g_entoffsets.m_nFallbackPaintKit );
 	}
 
-	__forceinline int &m_nFallbackStatTrak() {
-		return get< int >(g_entoffsets.m_nFallbackStatTrak);
+	__forceinline int& m_nFallbackStatTrak( ) {
+		return get< int >( g_entoffsets.m_nFallbackStatTrak );
 	}
 
-	__forceinline int &m_nFallbackSeed() {
-		return get< int >(g_entoffsets.m_nFallbackSeed);
+	__forceinline int& m_nFallbackSeed( ) {
+		return get< int >( g_entoffsets.m_nFallbackSeed );
 	}
 
-	__forceinline float &m_flFallbackWear() {
-		return get< float >(g_entoffsets.m_flFallbackWear);
+	__forceinline float& m_flFallbackWear( ) {
+		return get< float >( g_entoffsets.m_flFallbackWear );
 	}
 
-	__forceinline int &m_iViewModelIndex() {
-		return get< int >(g_entoffsets.m_iViewModelIndex);
+	__forceinline int& m_iViewModelIndex( ) {
+		return get< int >( g_entoffsets.m_iViewModelIndex );
 	}
 
-	__forceinline int &m_iWorldModelIndex() {
-		return get< int >(g_entoffsets.m_iWorldModelIndex);
+	__forceinline int& m_iWorldModelIndex( ) {
+		return get< int >( g_entoffsets.m_iWorldModelIndex );
 	}
 
-	__forceinline int &m_iAccountID() {
-		return get< int >(g_entoffsets.m_iAccountID);
+	__forceinline int& m_iAccountID( ) {
+		return get< int >( g_entoffsets.m_iAccountID );
 	}
 
-	__forceinline int &m_iItemIDHigh() {
-		return get< int >(g_entoffsets.m_iItemIDHigh);
+	__forceinline int& m_iItemIDHigh( ) {
+		return get< int >( g_entoffsets.m_iItemIDHigh );
 	}
 
-	__forceinline int &m_iEntityQuality() {
-		return get< int >(g_entoffsets.m_iEntityQuality);
+	__forceinline int& m_iEntityQuality( ) {
+		return get< int >( g_entoffsets.m_iEntityQuality );
 	}
 
-	__forceinline int &m_OriginalOwnerXuidLow() {
-		return get< int >(g_entoffsets.m_OriginalOwnerXuidLow);
+	__forceinline int& m_OriginalOwnerXuidLow( ) {
+		return get< int >( g_entoffsets.m_OriginalOwnerXuidLow );
 	}
 
-	__forceinline int &m_OriginalOwnerXuidHigh() {
-		return get< int >(g_entoffsets.m_OriginalOwnerXuidHigh);
+	__forceinline int& m_OriginalOwnerXuidHigh( ) {
+		return get< int >( g_entoffsets.m_OriginalOwnerXuidHigh );
 	}
 
-	__forceinline bool &m_bPinPulled() {
-		return get< bool >(g_entoffsets.m_bPinPulled);
+	__forceinline bool& m_bPinPulled( ) {
+		return get< bool >( g_entoffsets.m_bPinPulled );
 	}
 
-	__forceinline float &m_fThrowTime() {
-		return get< float >(g_entoffsets.m_fThrowTime);
+	__forceinline float& m_fThrowTime( ) {
+		return get< float >( g_entoffsets.m_fThrowTime );
 	}
 
-	__forceinline EHANDLE &m_hWeapon() {
-		return get< EHANDLE >(g_entoffsets.m_hWeapon);
+	__forceinline EHANDLE& m_hWeapon( ) {
+		return get< EHANDLE >( g_entoffsets.m_hWeapon );
 	}
 
-	__forceinline EHANDLE &m_hWeaponWorldModel() {
-		return get< EHANDLE >(g_entoffsets.m_hWeaponWorldModel);
+	__forceinline EHANDLE& m_hWeaponWorldModel( ) {
+		return get< EHANDLE >( g_entoffsets.m_hWeaponWorldModel );
 	}
 
-	__forceinline EHANDLE &m_hOwnerEntity() {
-		return get< EHANDLE >(g_entoffsets.m_hOwnerEntity);
+	__forceinline EHANDLE& m_hOwnerEntity( ) {
+		return get< EHANDLE >( g_entoffsets.m_hOwnerEntity );
 	}
 
-	__forceinline float &m_flConstraintRadius() {
-		return get< float >(g_entoffsets.m_flConstraintRadius);
+	__forceinline float& m_flConstraintRadius( ) {
+		return get< float >( g_entoffsets.m_flConstraintRadius );
 	}
 
-	__forceinline float &m_fLastShotTime() {
-		return get< float >(g_entoffsets.m_fLastShotTime);
+	__forceinline float& m_fLastShotTime( ) {
+		return get< float >( g_entoffsets.m_fLastShotTime );
+	}
+
+	__forceinline bool IsGrenade( ) { return m_iItemDefinitionIndex( ) >= Weapons_t::FLASHBANG && m_iItemDefinitionIndex( ) <= Weapons_t::FIREBOMB; }
+
+	__forceinline bool IsZoomable( bool extra_check = true ) {
+		return m_iItemDefinitionIndex( ) == Weapons_t::SSG08
+			|| m_iItemDefinitionIndex( ) == Weapons_t::SCAR20
+			|| m_iItemDefinitionIndex( ) == Weapons_t::AWP
+			|| m_iItemDefinitionIndex( ) == Weapons_t::G3SG1
+			|| ( extra_check && ( m_iItemDefinitionIndex( ) == Weapons_t::SG553 || m_iItemDefinitionIndex( ) == Weapons_t::AUG ) );
 	}
 
 public:
 	enum indices : size_t {
 		SETMODELINDEX = 75,
 		GETMAXCLIP1 = 367,
-		GETSPREAD = 439,
-		GETWPNDATA = 446, // C_WeaponCSBaseGun::GetCSWpnData
-		GETINACCURACY = 469,
-		UPDATEACCURACYPENALTY = 471,
+		GETSPREAD = 452,
+		GETWPNDATA = 460, // C_WeaponCSBaseGun::GetCSWpnData
+		GETINACCURACY = 482,
+		UPDATEACCURACYPENALTY = 483,
 	};
 
 public:
 	// virtuals.
-	__forceinline int GetMaxClip1() {
-		return util::get_method< int(__thiscall *)(void *) >(this, GETMAXCLIP1)(this);
+	__forceinline int GetMaxClip1( ) {
+		return util::get_method< int( __thiscall* )( void* ) >( this, GETMAXCLIP1 )( this );
 	}
 
-	__forceinline void SetGloveModelIndex(int index) {
-		return util::get_method< void(__thiscall *)(void *, int) >(this, SETMODELINDEX)(this, index);
+	__forceinline void SetGloveModelIndex( int index ) {
+		return util::get_method< void( __thiscall* )( void*, int ) >( this, SETMODELINDEX )( this, index );
 	}
 
-	__forceinline WeaponInfo *GetWpnData() {
-		return util::get_method< WeaponInfo *(__thiscall *)(void *) >(this, GETWPNDATA)(this);
+	__forceinline WeaponInfo* GetWpnData( ) {
+		return util::get_method< WeaponInfo* ( __thiscall* )( void* ) >( this, GETWPNDATA )( this );
 	}
 
-	__forceinline float GetInaccuracy() {
-		return util::get_method< float(__thiscall *)(void *) >(this, GETINACCURACY)(this);
+	__forceinline float GetInaccuracy( ) {
+		return util::get_method< float( __thiscall* )( void* ) >( this, GETINACCURACY )( this );
 	}
 
-	__forceinline float GetSpread() {
-		return util::get_method< float(__thiscall *)(void *) >(this, GETSPREAD)(this);
+	__forceinline float GetSpread( ) {
+		return util::get_method< float( __thiscall* )( void* ) >( this, GETSPREAD )( this );
 	}
 
-	__forceinline void UpdateAccuracyPenalty() {
-		return util::get_method< void(__thiscall *)(void *) >(this, UPDATEACCURACYPENALTY)(this);
+	__forceinline void UpdateAccuracyPenalty( ) {
+		return util::get_method< void( __thiscall* )( void* ) >( this, UPDATEACCURACYPENALTY )( this );
 	}
 
 	// misc funcs.
-	__forceinline Weapon *GetWeapon() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon * >(m_hWeapon());
+	__forceinline Weapon* GetWeapon( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon* >( m_hWeapon( ) );
 	}
 
-	__forceinline Weapon *GetWeaponWorldModel() {
-		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon * >(m_hWeaponWorldModel());
+	__forceinline Weapon* GetWeaponWorldModel( ) {
+		return g_csgo.m_entlist->GetClientEntityFromHandle< Weapon* >( m_hWeaponWorldModel( ) );
 	}
 
-	__forceinline bool IsKnife() {
-		return (GetWpnData()->m_weapon_type == WEAPONTYPE_KNIFE && m_iItemDefinitionIndex() != ZEUS);
+	__forceinline bool IsKnife( ) {
+		return ( GetWpnData( )->WeaponType == WEAPONTYPE_KNIFE && m_iItemDefinitionIndex( ) != ZEUS );
 	}
 
-	__forceinline vec3_t CalculateSpread(int seed, float inaccuracy, float spread, bool revolver2 = false) {
-		WeaponInfo *wep_info;
+	__forceinline vec3_t CalculateSpread( int seed, float inaccuracy, float spread, bool revolver2 = false ) {
+		WeaponInfo* wep_info;
 		int        item_def_index;
 		float      recoil_index, r1, r2, r3, r4, s1, c1, s2, c2;
 
 		// if we have no bullets, we have no spread.
-		wep_info = GetWpnData();
-		if (!wep_info || !wep_info->m_bullets)
-			return {};
+		wep_info = GetWpnData( );
+		if( !wep_info || !wep_info->iBullets )
+			return { };
 
 		// get some data for later.
-		item_def_index = m_iItemDefinitionIndex();
-		recoil_index = m_flRecoilIndex();
-
-		// seed randomseed.
-		g_csgo.RandomSeed((seed & 0xff) + 1);
+		item_def_index = m_iItemDefinitionIndex( );
+		recoil_index = m_flRecoilIndex( );
 
 		// generate needed floats.
-		r1 = g_csgo.RandomFloat(0.f, 1.f);
-		r2 = g_csgo.RandomFloat(0.f, math::pi_2);
+		r1 = std::get<0>(g_csgo.m_computed_seeds[seed]);
+		r2 = std::get<1>(g_csgo.m_computed_seeds[seed]);
 
 		// todo - dex; need to make sure this is right for shotguns still.
 		//             the 3rd arg to get_shotgun_spread is actually using the bullet iterator
@@ -1373,23 +1628,23 @@ public:
 			}
 		*/
 
-		if ( /*wep_info->m_weapon_type == WEAPONTYPE_SHOTGUN &&*/ g_csgo.weapon_accuracy_shotgun_spread_patterns->GetInt() > 0)
-			g_csgo.GetShotgunSpread(item_def_index, 0, 0 /*bullet_i*/ + wep_info->m_bullets * recoil_index, &r4, &r3);
+		if( /*wep_info->m_weapon_type == WEAPONTYPE_SHOTGUN &&*/ g_csgo.weapon_accuracy_shotgun_spread_patterns->GetInt( ) > 0 )
+			g_csgo.GetShotgunSpread( item_def_index, 0, 0 /*bullet_i*/ + wep_info->iBullets * recoil_index, &r4, &r3 );
 
 		else {
-			r3 = g_csgo.RandomFloat(0.f, 1.f);
-			r4 = g_csgo.RandomFloat(0.f, math::pi_2);
+			r3 = std::get<0>(g_csgo.m_computed_seeds[seed]);
+			r4 = std::get<1>(g_csgo.m_computed_seeds[seed]);
 		}
 
 		// revolver secondary spread.
-		if (item_def_index == REVOLVER && revolver2) {
-			r1 = 1.f - (r1 * r1);
-			r3 = 1.f - (r3 * r3);
+		if( item_def_index == REVOLVER && revolver2 ) {
+			r1 = 1.f - ( r1 * r1 );
+			r3 = 1.f - ( r3 * r3 );
 		}
 
 		// negev spread.
-		else if (item_def_index == NEGEV && recoil_index < 3.f) {
-			for (int i{ 3 }; i > recoil_index; --i) {
+		else if( item_def_index == NEGEV && recoil_index < 3.f ) {
+			for( int i{ 3 }; i > recoil_index; --i ) {
 				r1 *= r1;
 				r3 *= r3;
 			}
@@ -1399,74 +1654,67 @@ public:
 		}
 
 		// get needed sine / cosine values.
-		c1 = std::cos(r2);
-		c2 = std::cos(r4);
-		s1 = std::sin(r2);
-		s2 = std::sin(r4);
+		c1 = std::cos( r2 );
+		c2 = std::cos( r4 );
+		s1 = std::sin( r2 );
+		s2 = std::sin( r4 );
 
 		// calculate spread vector.
 		return {
-			(c1 * (r1 * inaccuracy)) + (c2 * (r3 * spread)),
-			(s1 * (r1 * inaccuracy)) + (s2 * (r3 * spread)),
+			( c1 * ( r1 * inaccuracy ) ) + ( c2 * ( r3 * spread ) ),
+			( s1 * ( r1 * inaccuracy ) ) + ( s2 * ( r3 * spread ) ),
 			0.f
 		};
 	}
 
-	__forceinline vec3_t CalculateSpread(int seed, bool revolver2 = false) {
-		return CalculateSpread(seed, GetInaccuracy(), GetSpread(), revolver2);
+	__forceinline vec3_t CalculateSpread( int seed, bool revolver2 = false ) {
+		return CalculateSpread( seed, GetInaccuracy( ), GetSpread( ), revolver2 );
 	}
 
-	__forceinline std::string GetLocalizedName() {
-		C_EconItemView *item_view;
-		CEconItemDefinition *item_def;
+	__forceinline std::string GetLocalizedName( ) {
+		auto weapondata = this->GetWpnData( );
+		if( !weapondata )
+			return XOR( "ERROR" );
 
-		item_view = g_csgo.GetEconItemView(this);
-		if (!item_view)
-			return XOR("error");
-
-		item_def = g_csgo.GetStaticData(item_view);
-		if (!item_def)
-			return XOR("error");
-
-		return util::WideToMultiByte(g_csgo.m_localize->Find(item_def->GetItemBaseName()));
+		return util::WideToMultiByte( g_csgo.m_localize->Find( weapondata->szHudName ) );
 	}
 };
 
 class CTraceFilterSimple_game {
 public:
-	void *m_vmt;
-	const Entity *m_pass_ent1;
+	void* m_vmt;
+	const Entity* m_pass_ent1;
 	int             m_collision_group;
 	ShouldHitFunc_t m_shouldhit_check_fn;
 
 public:
-	__forceinline CTraceFilterSimple_game() :
-		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void * >() },
-		m_pass_ent1{},
-		m_collision_group{},
-		m_shouldhit_check_fn{} {}
+	__forceinline CTraceFilterSimple_game( ) :
+		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void* >( ) },
+		m_pass_ent1{ },
+		m_collision_group{ },
+		m_shouldhit_check_fn{ } {}
 
-	__forceinline CTraceFilterSimple_game(const Entity *pass_ent1, int collision_group = COLLISION_GROUP_NONE, ShouldHitFunc_t shouldhit_check_fn = nullptr) :
-		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void * >() },
+	__forceinline CTraceFilterSimple_game( const Entity* pass_ent1, int collision_group = COLLISION_GROUP_NONE, ShouldHitFunc_t shouldhit_check_fn = nullptr ) :
+		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void* >( ) },
 		m_pass_ent1{ pass_ent1 },
 		m_collision_group{ collision_group },
 		m_shouldhit_check_fn{ shouldhit_check_fn } {}
 
-	__forceinline bool ShouldHitEntity(Entity *entity, int contents_mask) {
+	__forceinline bool ShouldHitEntity( Entity* entity, int contents_mask ) {
 		// note - dex; game is dumb, this gets the real vmt.
-		void *real_vmt = *(void **)m_vmt;
+		void* real_vmt = *( void** )m_vmt;
 
-		return util::get_method< bool(__thiscall *)(void *, Entity *, int) >(real_vmt, 0)(real_vmt, entity, contents_mask);
+		return util::get_method< bool( __thiscall* )( void*, Entity*, int ) >( real_vmt, 0 )( real_vmt, entity, contents_mask );
 	}
 
 	// note - dex; don't really care about calling the virtuals for these two functions, they only set members in the class for us.
-	__forceinline void SetPassEntity(Entity *pass_ent1) {
+	__forceinline void SetPassEntity( Entity* pass_ent1 ) {
 		m_pass_ent1 = pass_ent1;
 
 		// util::get_method< void (__thiscall *)( void *, Entity* ) >( m_vmt, 2 )( m_vmt, pass_ent1 );
 	}
 
-	__forceinline void SetCollisionGroup(int collision_group) {
+	__forceinline void SetCollisionGroup( int collision_group ) {
 		m_collision_group = collision_group;
 
 		// util::get_method< void (__thiscall *)( void *, int ) >( m_vmt, 3 )( m_vmt, collision_group );
@@ -1475,48 +1723,48 @@ public:
 
 class CTraceFilterSkipTwoEntities_game {
 public:
-	void *m_vmt;
-	const Entity *m_pass_ent1;
+	void* m_vmt;
+	const Entity* m_pass_ent1;
 	int             m_collision_group;
 	ShouldHitFunc_t m_shouldhit_check_fn;
-	const Entity *m_pass_ent2;
+	const Entity* m_pass_ent2;
 
 public:
-	__forceinline CTraceFilterSkipTwoEntities_game() :
-		m_vmt{ g_csgo.CTraceFilterSkipTwoEntities_vmt.as< void * >() },
-		m_pass_ent1{},
-		m_collision_group{},
-		m_shouldhit_check_fn{},
-		m_pass_ent2{} {}
+	__forceinline CTraceFilterSkipTwoEntities_game( ) :
+		m_vmt{ g_csgo.CTraceFilterSkipTwoEntities_vmt.as< void* >( ) },
+		m_pass_ent1{ },
+		m_collision_group{ },
+		m_shouldhit_check_fn{ },
+		m_pass_ent2{ } {}
 
-	__forceinline CTraceFilterSkipTwoEntities_game(const Entity *pass_ent1, const Entity *pass_ent2, int collision_group = COLLISION_GROUP_NONE, ShouldHitFunc_t shouldhit_check_fn = nullptr) :
-		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void * >() },
+	__forceinline CTraceFilterSkipTwoEntities_game( const Entity* pass_ent1, const Entity* pass_ent2, int collision_group = COLLISION_GROUP_NONE, ShouldHitFunc_t shouldhit_check_fn = nullptr ) :
+		m_vmt{ g_csgo.CTraceFilterSimple_vmt.as< void* >( ) },
 		m_pass_ent1{ pass_ent1 },
 		m_collision_group{ collision_group },
 		m_shouldhit_check_fn{ shouldhit_check_fn },
 		m_pass_ent2{ pass_ent2 } {}
 
-	__forceinline bool ShouldHitEntity(Entity *entity, int contents_mask) {
+	__forceinline bool ShouldHitEntity( Entity* entity, int contents_mask ) {
 		// note - dex; game is dumb, this gets the real vmt.
-		void *real_vmt = *(void **)m_vmt;
+		void* real_vmt = *( void** )m_vmt;
 
-		return util::get_method< bool(__thiscall *)(void *, Entity *, int) >(m_vmt, 0)(m_vmt, entity, contents_mask);
+		return util::get_method< bool( __thiscall* )( void*, Entity*, int ) >( m_vmt, 0 )( m_vmt, entity, contents_mask );
 	}
 
 	// note - dex; don't really care about calling the virtuals for these two functions, they only set members in the class for us.
-	__forceinline void SetPassEntity(Entity *pass_ent1) {
+	__forceinline void SetPassEntity( Entity* pass_ent1 ) {
 		m_pass_ent1 = pass_ent1;
 
 		// util::get_method< void (__thiscall *)( void *, Entity* ) >( m_vmt, 2 )( m_vmt, pass_ent1 );
 	}
 
-	__forceinline void SetCollisionGroup(int collision_group) {
+	__forceinline void SetCollisionGroup( int collision_group ) {
 		m_collision_group = collision_group;
 
 		// util::get_method< void (__thiscall *)( void *, int ) >( m_vmt, 3 )( m_vmt, collision_group );
 	}
 
-	__forceinline void SetPassEntity2(Entity *pass_ent2) {
+	__forceinline void SetPassEntity2( Entity* pass_ent2 ) {
 		m_pass_ent2 = pass_ent2;
 		// util::get_method< void (__thiscall *)( void *, Entity* ) >( m_vmt, 4 )( m_vmt, pass_ent2 );
 	}

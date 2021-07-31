@@ -37,10 +37,15 @@ public:
 	// indexes for virtuals and hooks.
 	enum indices : size_t {
 		SETHOST = 1,
+		PROCESSIMPACTS = 4,
 	};
 
 	__forceinline void SetHost( Entity* host ) {
 		return util::get_method< void( __thiscall* )( decltype( this ), Entity* ) >( this, SETHOST )( this, host );
+	}
+
+	__forceinline void ProcessImpacts( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, PROCESSIMPACTS )( this );
 	}
 };
 
@@ -48,13 +53,13 @@ class CPrediction {
 public:
 	// indexes for virtuals and hooks.
 	enum indices : size_t {
-		UPDATE                  = 3,
-        POSTNETWORKDATARECEIVED = 6,
-		SETLOCALVIEWANGLES      = 13,
-		INPREDICTION            = 14,
-		RUNCOMMAND              = 19,
-		SETUPMOVE               = 20,
-		FINISHMOVE              = 21
+		UPDATE = 3,
+		POSTNETWORKDATARECEIVED = 6,
+		SETLOCALVIEWANGLES = 13,
+		INPREDICTION = 14,
+		RUNCOMMAND = 19,
+		SETUPMOVE = 20,
+		FINISHMOVE = 21
 	};
 
 public:
@@ -96,14 +101,22 @@ class CGameMovement {
 public:
 	// indexes for virtuals and hooks
 	enum indices : size_t {
-		PROCESSMOVEMENT             = 1,
-		STARTTRACKPREDICTIONERRORS  = 3,
+		PROCESSMOVEMENT = 1,
+		RESET = 2,
+		STARTTRACKPREDICTIONERRORS = 3,
 		FINISHTRACKPREDICTIONERRORS = 4,
-		ONLAND                      = 32
+		GETPLAYERMINS = 6,
+		GETPLAYERMAXS = 7,
+		GETPLAYERVIEWOFFSET = 8,
+		ONLAND = 32
 	};
 
 	__forceinline void ProcessMovement( Entity* player, CMoveData* data ) {
 		return util::get_method< void( __thiscall* )( decltype( this ), Entity*, CMoveData* ) >( this, PROCESSMOVEMENT )( this, player, data );
+	}
+
+	__forceinline void Reset( ) {
+		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, RESET )( this );
 	}
 
 	__forceinline void StartTrackPredictionErrors( Entity* player ) {
@@ -112,5 +125,17 @@ public:
 
 	__forceinline void FinishTrackPredictionErrors( Entity* player ) {
 		return util::get_method< void( __thiscall* )( decltype( this ), Entity* ) >( this, FINISHTRACKPREDICTIONERRORS )( this, player );
+	}
+
+	__forceinline vec3_t const& GetPlayerMins( bool ducked ) {
+		return util::get_method< vec3_t const&( __thiscall* )( decltype( this ), bool ) >( this, GETPLAYERMINS )( this, ducked );
+	}
+
+	__forceinline vec3_t const& GetPlayerMaxs( bool ducked ) {
+		return util::get_method< vec3_t const& ( __thiscall* )( decltype( this ), bool ) >( this, GETPLAYERMAXS )( this, ducked );
+	}
+
+	__forceinline vec3_t const& GetPlayerViewOffset( bool ducked ) {
+		return util::get_method< vec3_t const& ( __thiscall* )( decltype( this ), bool ) >( this, GETPLAYERVIEWOFFSET )( this, ducked );
 	}
 };

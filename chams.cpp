@@ -1,4 +1,4 @@
-#include "includes.h"
+#include "../includes.h"
 
 Chams g_chams{ };;
 
@@ -72,7 +72,7 @@ void Chams::init( ) {
 	debugambientcube = g_csgo.m_material_system->FindMaterial( XOR( "debug/debugambientcube" ), XOR( "Model textures" ) );
 	debugambientcube->IncrementReferenceCount( );
 
-	debugdrawflat = g_csgo.m_material_system->FindMaterial( XOR( "debug/debugdrawflat" ), XOR( "Model textures" ) );
+	debugdrawflat = g_csgo.m_material_system->FindMaterial( XOR( "debug/debugdrawflat" ), nullptr );
 	debugdrawflat->IncrementReferenceCount( );
 }
 
@@ -92,96 +92,107 @@ bool Chams::OverridePlayer( int index ) {
 	bool enemy = g_cl.m_local && player->enemy( g_cl.m_local );
 
 	// we have chams on enemies.
-	if( enemy && g_menu.main.players.chams_enemy.get( 0 ) )
+	if( enemy && g_cfg[ XOR( "esp_chams_enemies" ) ].get<bool>( ) )
 		return true;
 
 	// we have chams on friendly.
-	else if( !enemy && g_menu.main.players.chams_friendly.get( 0 ) )
+	else if( !enemy && g_cfg[ XOR( "esp_chams_team" ) ].get<bool>( ) )
 		return true;
 
 	return false;
 }
 
-bool Chams::GenerateLerpedMatrix( int index, BoneArray* out ) {
-	LagRecord* current_record;
-	AimPlayer* data;
+void Chams::RenderFakeChams( ) {
+	if( !g_cl.m_processing )
+		return;
 
-	Player* ent = g_csgo.m_entlist->GetClientEntity< Player* >( index );
-	if( !ent )
-		return false;
+	if( !g_cfg[ XOR( "esp_chams_desync_enable" ) ].get<bool>( ) )
+		return;
 
-	if( !g_aimbot.IsValidTarget( ent ) )
-		return false;
+	// get color.
+	Color color = g_cfg[ XOR( "esp_chams_desync_color" ) ].get_color( );
 
-	data = &g_aimbot.m_players[ index - 1 ];
-	if( !data || data->m_records.empty( ) )
-		return false;
-
-	if( data->m_records.size( ) < 2 )
-		return false;
-
-	auto* channel_info = g_csgo.m_engine->GetNetChannelInfo( );
-	if( !channel_info )
-		return false;
-
-	static float max_unlag = 0.2f;
-	static auto sv_maxunlag = g_csgo.m_cvar->FindVar( HASH( "sv_maxunlag" ) );
-	if( sv_maxunlag ) {
-		max_unlag = sv_maxunlag->GetFloat( );
-	}
-
-	for( auto it = data->m_records.rbegin( ); it != data->m_records.rend( ); it++ ) {
-		current_record = it->get( );
-
-		bool end = it + 1 == data->m_records.rend( );
-
-		if( current_record && current_record->valid( ) && ( !end && ( ( it + 1 )->get( ) ) ) ) {
-			if( current_record->m_origin.dist_to( ent->GetAbsOrigin( ) ) < 1.f ) {
-				return false;
-			}
-
-			vec3_t next = end ? ent->GetAbsOrigin( ) : ( it + 1 )->get( )->m_origin;
-			float  time_next = end ? ent->m_flSimulationTime( ) : ( it + 1 )->get( )->m_sim_time;
-
-			float total_latency = channel_info->GetAvgLatency( 0 ) + channel_info->GetAvgLatency( 1 );
-			std::clamp( total_latency, 0.f, max_unlag );
-
-			float correct = total_latency + g_cl.m_lerp;
-			float time_delta = time_next - current_record->m_sim_time;
-			float add = end ? 1.f : time_delta;
-			float deadtime = current_record->m_sim_time + correct + add;
-
-			float curtime = g_csgo.m_globals->m_curtime;
-			float delta = deadtime - curtime;
-
-			float mul = 1.f / add;
-			vec3_t lerp = math::Interpolate( next, current_record->m_origin, std::clamp( delta * mul, 0.f, 1.f ) );
-
-			matrix3x4_t ret[ 128 ];
-
-			std::memcpy( ret,
-				current_record->m_bones,
-				sizeof( ret ) );
-
-			for( size_t i{ }; i < 128; ++i ) {
-				vec3_t matrix_delta = current_record->m_bones[ i ].GetOrigin( ) - current_record->m_origin;
-				ret[ i ].SetOrigin( matrix_delta + lerp );
-			}
-
-			std::memcpy( out,
-				ret,
-				sizeof( ret ) );
-
-			return true;
+	// was the matrix properly setup?
+	if( g_cl.m_fake_matrix ) {
+		// fix model rendering origin.
+		for( auto& i : g_cl.m_fake_matrix ) {
+			i[ 0 ][ 3 ] += g_cl.m_local->GetRenderOrigin( ).x;
+			i[ 1 ][ 3 ] += g_cl.m_local->GetRenderOrigin( ).y;
+			i[ 2 ][ 3 ] += g_cl.m_local->GetRenderOrigin( ).z;
 		}
+
+		// override blend.
+		SetAlpha( color.a( ) / 255.f );
+
+		// set material and color.
+		SetupMaterial( g_cfg[ XOR( "esp_chams_desync_material" ) ].get<int>( ) == 0 ? g_chams.debugambientcube : g_chams.debugdrawflat, color, true );
+
+		// backup the bone cache before we fuck with it.
+		auto backup_bones = g_cl.m_local->m_BoneCache( ).m_pCachedBones;
+
+		// replace their bone cache with our custom one.
+		g_cl.m_local->m_BoneCache( ).m_pCachedBones = g_cl.m_fake_matrix;
+
+		// manually draw the model.
+		g_cl.m_local->DrawModel( );
+
+		// reset their bone cache to the previous one.
+		g_cl.m_local->m_BoneCache( ).m_pCachedBones = backup_bones;
+
+		// restore.
+		g_csgo.m_studio_render->ForcedMaterialOverride( nullptr );
+		g_csgo.m_render_view->SetColorModulation( colors::white );
+		g_csgo.m_render_view->SetBlend( 1.f );
+	}
+}
+
+bool Chams::GenerateLerpedMatrix( int index, BoneArray* out ) {
+	if( !g_cl.m_processing )
+		return false;
+
+	auto player = g_csgo.m_entlist->GetClientEntity<Player*>( index );
+	if( !player )
+		return false;
+
+	const auto LastRecord = g_lagcompensation.GetViableRecords( player, 1.0f );
+
+	if( !LastRecord.has_value( ) )
+		return false;
+
+	const auto& FirstInvalid = LastRecord.value( ).first;
+	const auto& LastInvalid = LastRecord.value( ).second;
+
+	if( FirstInvalid->m_bDormant )
+		return false;
+
+	if( LastInvalid->m_flSimulationTime - FirstInvalid->m_flSimulationTime > 0.5f )
+		return false;
+
+	const auto NextOrigin = LastInvalid->m_vecOrigin;
+	const auto curtime = g_csgo.m_globals->m_curtime;
+
+	auto flDelta = 1.f - ( curtime - LastInvalid->m_flInterpTime ) / ( LastInvalid->m_flSimulationTime - FirstInvalid->m_flSimulationTime );
+	if( flDelta < 0.f || flDelta > 1.f )
+		LastInvalid->m_flInterpTime = curtime;
+
+	flDelta = 1.f - ( curtime - LastInvalid->m_flInterpTime ) / ( LastInvalid->m_flSimulationTime - FirstInvalid->m_flSimulationTime );
+
+	const auto lerp = math::Interpolate( NextOrigin, FirstInvalid->m_vecOrigin, std::clamp( flDelta, 0.f, 1.f ) );
+
+	BoneArray ret[ 128 ];
+	memcpy( ret, FirstInvalid->m_pMatrix_Resolved, sizeof( BoneArray[ 128 ] ) );
+
+	for( size_t i{ }; i < 128; ++i ) {
+		const auto matrix_delta = math::MatrixGetOrigin( FirstInvalid->m_pMatrix_Resolved[ i ] ) - FirstInvalid->m_vecOrigin;
+		math::MatrixSetOrigin( matrix_delta + lerp, ret[ i ] );
 	}
 
-	return false;
+	memcpy( out, ret, sizeof( BoneArray[ 128 ] ) );
+	return true;
 }
 
 void Chams::RenderHistoryChams( int index ) {
 	AimPlayer* data;
-	LagRecord* record;
 
 	Player* player = g_csgo.m_entlist->GetClientEntity< Player* >( index );
 	if( !player )
@@ -193,18 +204,17 @@ void Chams::RenderHistoryChams( int index ) {
 	bool enemy = g_cl.m_local && player->enemy( g_cl.m_local );
 	if( enemy ) {
 		data = &g_aimbot.m_players[ index - 1 ];
-		if( !data || data->m_records.empty( ) )
+		if( !data )
 			return;
 
-		record = g_resolver.FindLastRecord( data );
-		if( !record )
-			return;
+		// get color.
+		Color color = g_cfg[ XOR( "esp_chams_enemy_backtrack_color" ) ].get_color( );
 
 		// override blend.
-		SetAlpha( g_menu.main.players.chams_enemy_history_blend.get( ) / 100.f );
+		SetAlpha( color.a( ) / 255.f );
 
 		// set material and color.
-		SetupMaterial( debugdrawflat, g_menu.main.players.chams_enemy_history_col.get( ), true );
+		SetupMaterial( debugdrawflat, color, true );
 
 		// was the matrix properly setup?
 		BoneArray arr[ 128 ];
@@ -214,6 +224,57 @@ void Chams::RenderHistoryChams( int index ) {
 
 			// replace their bone cache with our custom one.
 			player->m_BoneCache( ).m_pCachedBones = arr;
+
+			// manually draw the model.
+			player->DrawModel( );
+
+			// reset their bone cache to the previous one.
+			player->m_BoneCache( ).m_pCachedBones = backup_bones;
+		}
+	}
+}
+
+void Chams::RenderResolveChams( int index ) {
+	AimPlayer* data;
+
+	Player* player = g_csgo.m_entlist->GetClientEntity< Player* >( index );
+	if( !player || !g_cl.m_processing )
+		return;
+
+	if( !g_aimbot.IsValidTarget( player ) )
+		return;
+
+	bool enemy = g_cl.m_local && player->enemy( g_cl.m_local );
+	if( enemy ) {
+		data = &g_aimbot.m_players[ index - 1 ];
+		if( !data )
+			return;
+
+		const auto latest = g_lagcompensation.GetLatestRecord(player);
+
+		if (!latest.has_value())
+			return;
+
+		auto record = latest.value();
+
+		// get color.
+		Color color = g_cfg[ XOR( "esp_chams_enemy_resolve_color" ) ].get_color( );
+
+		// override blend.
+		SetAlpha( color.a( ) / 255.f );
+
+		// set material and color.
+		SetupMaterial( debugdrawflat, color, true );
+
+		auto matrix = record->m_pMatrix;
+
+		// was the matrix properly setup?
+		if(matrix) {
+			// backup the bone cache before we fuck with it.
+			auto backup_bones = player->m_BoneCache( ).m_pCachedBones;
+
+			// replace their bone cache with our custom one.
+			player->m_BoneCache( ).m_pCachedBones = matrix;
 
 			// manually draw the model.
 			player->DrawModel( );
@@ -267,56 +328,74 @@ void Chams::RenderPlayer( Player* player ) {
 	// this is the local player.
 	// we always draw the local player manually in drawmodel.
 	if( player->m_bIsLocalPlayer( ) ) {
-		if( g_menu.main.players.chams_local_scope.get( ) && player->m_bIsScoped( ) )
-			SetAlpha( 0.5f );
+		// render the fake model.
+		// RenderFakeChams( );
 
-		else if( g_menu.main.players.chams_local.get( ) ) {
-			// override blend.
-			SetAlpha( g_menu.main.players.chams_local_blend.get( ) / 100.f );
+		if( g_cfg[ XOR( "esp_chams_local_blend_if_scoped" ) ].get<bool>( ) && player->m_bIsScoped( ) )
+			SetAlpha( 1.f - ( g_cfg[ XOR( "esp_chams_local_blend_amount" ) ].get<float>( ) / 100.f ) );
+
+		else if( g_cfg[ XOR( "esp_chams_local_enable" ) ].get<bool>( ) ) {
+
+			Color color = g_cfg[ XOR( "esp_chams_local_color" ) ].get_color( );
+
+			SetAlpha( color.a( ) / 255.f );
 
 			// set material and color.
-			SetupMaterial( debugambientcube, g_menu.main.players.chams_local_col.get( ), false );
+			SetupMaterial( g_cfg[ XOR( "esp_chams_local_material" ) ].get<int>( ) == 0 ? debugambientcube : debugdrawflat, color, false );
 		}
 
 		// manually draw the model.
 		player->DrawModel( );
 	}
+	else {
+		// check if is an enemy.
+		bool enemy = g_cl.m_local && player->enemy( g_cl.m_local );
 
-	// check if is an enemy.
-	bool enemy = g_cl.m_local && player->enemy( g_cl.m_local );
+		if( enemy && g_cfg[ XOR( "esp_chams_enemy_backtrack" ) ].get<bool>( ) ) {
+			RenderHistoryChams( player->index( ) );
 
-	if( enemy && g_menu.main.players.chams_enemy_history.get( ) ) {
-		RenderHistoryChams( player->index( ) );
-	}
+			g_csgo.m_studio_render->ForcedMaterialOverride( nullptr );
+			g_csgo.m_render_view->SetColorModulation( colors::white );
+			g_csgo.m_render_view->SetBlend( 1.f );
+		}	
+		
+		if( enemy && g_cfg[ XOR( "esp_chams_enemies" ) ].get<bool>( ) ) {
+			if( g_cfg[ XOR( "esp_chams_enemies_invis" ) ].get<bool>( ) ) {
 
-	if( enemy && g_menu.main.players.chams_enemy.get( 0 ) ) {
-		if( g_menu.main.players.chams_enemy.get( 1 ) ) {
+				Color color = g_cfg[ XOR( "esp_chams_enemies_invis_color" ) ].get_color( );
 
-			SetAlpha( g_menu.main.players.chams_enemy_blend.get( ) / 100.f );
-			SetupMaterial( debugambientcube, g_menu.main.players.chams_enemy_invis.get( ), true );
+				SetAlpha( color.a( ) / 255.f );
+				SetupMaterial( g_cfg[ XOR( "esp_chams_enemies_invis_material" ) ].get<int>( ) == 0 ? debugambientcube : debugdrawflat, color, true );
+
+				player->DrawModel( ); 
+			}
+
+			Color color = g_cfg[ XOR( "esp_chams_enemies_color" ) ].get_color( );
+
+			SetAlpha( color.a( ) / 255.f );
+			SetupMaterial( g_cfg[ XOR( "esp_chams_enemies_material" ) ].get<int>( ) == 0 ? debugambientcube : debugdrawflat, color, false );
 
 			player->DrawModel( );
 		}
 
-		SetAlpha( g_menu.main.players.chams_enemy_blend.get( ) / 100.f );
-		SetupMaterial( debugambientcube, g_menu.main.players.chams_enemy_vis.get( ), false );
+		else if( !enemy && g_cfg[ XOR( "esp_chams_team" ) ].get<bool>( ) ) {
+			if( g_cfg[ XOR( "esp_chams_team_invis" ) ].get<bool>( ) ) {
 
-		player->DrawModel( );
-	}
+				Color color = g_cfg[ XOR( "esp_chams_team_invis_color" ) ].get_color( );
 
-	else if( !enemy && g_menu.main.players.chams_friendly.get( 0 ) ) {
-		if( g_menu.main.players.chams_friendly.get( 1 ) ) {
+				SetAlpha( color.a( ) / 255.f );
+				SetupMaterial( g_cfg[ XOR( "esp_chams_team_invis_material" ) ].get<int>( ) == 0 ? debugambientcube : debugdrawflat, color, true );
 
-			SetAlpha( g_menu.main.players.chams_friendly_blend.get( ) / 100.f );
-			SetupMaterial( debugambientcube, g_menu.main.players.chams_friendly_invis.get( ), true );
+				player->DrawModel( );
+			}
+
+			Color color = g_cfg[ XOR( "esp_chams_team_color" ) ].get_color( );
+
+			SetAlpha( color.a( ) / 255.f );
+			SetupMaterial( g_cfg[ XOR( "esp_chams_team_material" ) ].get<int>( ) == 0 ? debugambientcube : debugdrawflat, color, false );
 
 			player->DrawModel( );
 		}
-
-		SetAlpha( g_menu.main.players.chams_friendly_blend.get( ) / 100.f );
-		SetupMaterial( debugambientcube, g_menu.main.players.chams_friendly_vis.get( ), false );
-
-		player->DrawModel( );
 	}
 
 	m_running = false;

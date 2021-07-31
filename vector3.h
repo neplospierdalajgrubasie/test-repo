@@ -219,12 +219,12 @@ public:
 		};
 	}
 
-	__forceinline float dist_to( const vec3_t &vOther ) const {
+	__forceinline float dist_to( const vec3_t& v ) const {
 		vec3_t delta;
 
-		delta.x = x - vOther.x;
-		delta.y = y - vOther.y;
-		delta.z = z - vOther.z;
+		delta.x = x - v.x;
+		delta.y = y - v.y;
+		delta.z = z - v.z;
 
 		return delta.length_2d( );
 	}
@@ -235,6 +235,10 @@ public:
 		( *this ) /= ( length( ) + std::numeric_limits< float >::epsilon( ) );
 
 		return len;
+	}
+
+	__forceinline bool valid( ) const {
+		return x != 0 && y != 0 && z != 0;
 	}
 
 	__forceinline vec3_t normalized( ) const {

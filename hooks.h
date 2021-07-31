@@ -5,9 +5,6 @@ public:
 	void init( );
 
 public:
-	// forward declarations
-	class IRecipientFilter;
-
 	// prototypes.
 	using PaintTraverse_t              = void( __thiscall* )( void*, VPANEL, bool, bool );
 	using DoPostScreenSpaceEffects_t   = bool( __thiscall* )( void*, CViewSetup* );
@@ -20,14 +17,19 @@ public:
 	using UpdateClientSideAnimation_t  = void( __thiscall* )( void* );
     using GetActiveWeapon_t            = Weapon*( __thiscall * )( void* );
 	using DoExtraBoneProcessing_t      = void( __thiscall* )( void*, int, int, int, int, int, int );
-	using BuildTransformations_t       = void( __thiscall* )( void*, int, int, int, int, int, int );
+	using CalcView_t                   = void( __thiscall* )( void*, vec3_t&, vec3_t&, float&, float&, float& );
+	using Weapon_ShootPosition_t       = vec3_t( __thiscall* )( void*, vec3_t* );
+	using BuildTransformations_t	   = void(__thiscall*)(void*, int, int, int, int, int, int);
+	using StandardBlendingRules_t	   = void(__thiscall*)(void*, int, int, int, int, int);
 	using CalcViewModelView_t          = void( __thiscall* )( void*, vec3_t&, ang_t& );
 	using InPrediction_t               = bool( __thiscall* )( void* );
 	using OverrideView_t               = void( __thiscall* )( void*, CViewSetup* );
 	using LockCursor_t                 = void( __thiscall* )( void* );
 	using RunCommand_t                 = void( __thiscall* )( void*, Entity*, CUserCmd*, IMoveHelper* );
+	using SetupMove_t				   = void(__thiscall*)(void*, Player*, CUserCmd*, IMoveHelper*, CMoveData*);
 	using ProcessPacket_t              = void( __thiscall* )( void*, void*, bool );
 	using SendDatagram_t               = int( __thiscall* )( void*, void* );
+	using SendNetMsg_t				   = bool(__thiscall*)(void*, INetMessage&, bool, bool);
 	// using CanPacket_t                = bool( __thiscall* )( void* );
 	using PlaySound_t                  = void( __thiscall* )( void*, const char* );
 	using GetScreenSize_t              = void( __thiscall* )( void*, int&, int& );
@@ -36,7 +38,7 @@ public:
 	using DrawModelExecute_t           = void( __thiscall* )( void*, uintptr_t, const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t* );
 	using ComputeShadowDepthTextures_t = void( __thiscall* )( void*, const CViewSetup&, bool );
 	using GetInt_t                     = int( __thiscall* )( void* );
-	using GetBool_t                    = bool( __thiscall* )( void* );
+	using GetFloat_t				   = float(__thiscall*)(void*);
 	using IsConnected_t                = bool( __thiscall* )( void* );
 	using IsHLTV_t                     = bool( __thiscall* )( void* );
 	using OnEntityCreated_t            = void( __thiscall* )( void*, Entity* );
@@ -51,23 +53,23 @@ public:
 	using OnScreenSizeChanged_t        = void( __thiscall* )( void*, int, int );
 	using OverrideConfig_t             = bool( __thiscall* )( void*, MaterialSystem_Config_t*, bool );
 	using PostDataUpdate_t             = void( __thiscall* )( void*, DataUpdateType_t );
-	using TempEntities_t               = bool( __thiscall* )( void*, void * );
-	using EmitSound_t                  = void( __thiscall* )( void*, IRecipientFilter&, int, int, const char*, unsigned int, const char*, float, float, int, int, int, const vec3_t*, const vec3_t*, void*, bool, float, int );
-	// using PreDataUpdate_t            = void( __thiscall* )( void*, DataUpdateType_t );
+	using WriteUsercmdDeltaToBuffer_t = bool(__thiscall*)(void*, int, void*, int, int, bool);
 
 public:
-	bool                     TempEntities( void *msg );
 	void                     PaintTraverse( VPANEL panel, bool repaint, bool force );
 	bool                     DoPostScreenSpaceEffects( CViewSetup* setup );
-	bool                     CreateMove( float input_sample_time, CUserCmd* cmd );
+	bool					 CreateMove( float input_sample_time, CUserCmd* cmd );
 	void                     LevelInitPostEntity( );
 	void                     LevelShutdown( );
 	//int                      IN_KeyEvent( int event, int key, const char* bind );
 	void                     LevelInitPreEntity( const char* map );
 	void                     FrameStageNotify( Stage_t stage );
+	bool					 WriteUsercmdDeltaToBuffer(int m_nSlot, void* m_pBuffer, int m_nFrom, int m_nTo, bool m_bNewCmd);
 	void                     UpdateClientSideAnimation( );
-    Weapon*                  GetActiveWeapon( );
+	void					 CalcView( vec3_t& eyeOrigin, vec3_t& eyeAngles, float& zNear, float& zFar, float& fov );
+	vec3_t					 Weapon_ShootPosition(vec3_t* ang );
 	bool                     InPrediction( );
+	void				     SetupMove(Player* ent, CUserCmd* cmd, IMoveHelper* movehelper, CMoveData* movedata);
 	bool                     ShouldDrawParticles( );
 	bool                     ShouldDrawFog( );
 	void                     OverrideView( CViewSetup* view );
@@ -77,35 +79,39 @@ public:
 	void                     RunCommand( Entity* ent, CUserCmd* cmd, IMoveHelper* movehelper );
 	int                      SendDatagram( void* data );
 	void                     ProcessPacket( void* packet, bool header );
+	bool					 SendNetMsg(INetMessage& msg, bool bForceReliable, bool bVoice);
 	//void                     GetScreenSize( int& w, int& h );
 	void                     SceneEnd( );
 	void                     DrawModelExecute( uintptr_t ctx, const DrawModelState_t& state, const ModelRenderInfo_t& info, matrix3x4_t* bone );
 	void                     ComputeShadowDepthTextures( const CViewSetup& view, bool unk );
 	int                      DebugSpreadGetInt( );
-	bool                     NetShowFragmentsGetBool( );
+	int                      CsmShadowGetInt( );
 	void                     DoExtraBoneProcessing( int a2, int a3, int a4, int a5, int a6, int a7 );
-	void                     BuildTransformations( int a2, int a3, int a4, int a5, int a6, int a7 );
+	void                     BuildTransformations(int a2, int a3, int a4, int a5, int a6, int a7);
+	void                     StandardBlendingRules(int a2, int a3, int a4, int a5, int a6);
 	bool                     IsConnected( );
 	bool                     IsHLTV( );
-	void                     EmitSound( IRecipientFilter& filter, int iEntIndex, int iChannel, const char* pSoundEntry, unsigned int nSoundEntryHash, const char* pSample, float flVolume, float flAttenuation, int nSeed, int iFlags, int iPitch, const vec3_t* pOrigin, const vec3_t* pDirection, void* pUtlVecOrigins, bool bUpdatePositions, float soundtime, int speakerentity );
+	void					 FireEvents();
 	void                     RenderSmokeOverlay( bool unk );
 	void                     OnRenderStart( );
     void                     RenderView( const CViewSetup &view, const CViewSetup &hud_view, int clear_flags, int what_to_draw );
 	void                     Render2DEffectsPostHUD( const CViewSetup& setup );
 	CMatchSessionOnlineHost* GetMatchSession( );
 	bool                     OverrideConfig( MaterialSystem_Config_t* config, bool update );
-	void                     PostDataUpdate( DataUpdateType_t type );
+	static void __stdcall    PostDataUpdate( C_TEFireBullets* thisptr, DataUpdateType_t type );
+	static void	__stdcall	 PostDataUpdate_h(DataUpdateType_t type);
 
+	static HRESULT WINAPI Present(IDirect3DDevice9* pDevice, RECT* pRect1, const RECT* pRect2, HWND hWnd, const RGNDATA* pRGNData);
+	static HRESULT WINAPI Reset(IDirect3DDevice9* pDevice, D3DPRESENT_PARAMETERS* pPresentParameters);
 	static LRESULT WINAPI WndProc( HWND wnd, uint32_t msg, WPARAM wp, LPARAM lp );
 
 public:
 	// vmts.
 	VMT m_panel;
+	VMT m_player;
 	VMT m_client_mode;
 	VMT m_client;
-	VMT m_client_state;
 	VMT m_engine;
-	VMT m_engine_sound;
 	VMT m_prediction;
 	VMT m_surface;
 	VMT m_render;
@@ -117,13 +123,11 @@ public:
 	VMT m_match_framework;
 	VMT m_material_system;
 	VMT m_fire_bullets;
-	VMT m_net_show_fragments;
-
-	// player shit.
-	std::array< VMT, 64 > m_player;
+	VMT m_device;
 
 	// cvars
 	VMT m_debug_spread;
+	VMT m_cl_csm_shadows;
 
 	// wndproc old ptr.
 	WNDPROC m_old_wndproc;
@@ -132,25 +136,10 @@ public:
 	DoExtraBoneProcessing_t     m_DoExtraBoneProcessing;
 	UpdateClientSideAnimation_t m_UpdateClientSideAnimation;
     GetActiveWeapon_t           m_GetActiveWeapon;
-	BuildTransformations_t      m_BuildTransformations;
 
 	// netvar proxies.
 	RecvVarProxy_t m_Pitch_original;
-	RecvVarProxy_t m_Body_original;
     RecvVarProxy_t m_Force_original;
-	RecvVarProxy_t m_AbsYaw_original;
-};
-
-// note - dex; these are defined in player.cpp.
-class CustomEntityListener : public IEntityListener {
-public:
-    virtual void OnEntityCreated( Entity *ent );
-    virtual void OnEntityDeleted( Entity *ent );
-
-    __forceinline void init( ) {
-        g_csgo.AddListenerEntity( this );
-    }
 };
 
 extern Hooks                g_hooks;
-extern CustomEntityListener g_custom_entity_listener;

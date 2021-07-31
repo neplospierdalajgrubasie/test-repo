@@ -161,7 +161,7 @@ public:
 	bool              m_joystick_adv_init;			// 0x07
 	PAD( 0x2C );									// 0x08
 	void*             m_keys;						// 0x34
-	PAD( 0x6C );									// 0x38
+	PAD( 116 );									// 0x38
 	bool              m_camera_intercepting_mouse;	// 0x9C
 	bool              m_camera_in_third_person;		// 0x9D
 	bool              m_camera_moving_with_mouse;	// 0x9E
@@ -192,7 +192,7 @@ public:
 		return util::get_method< void( __thiscall* )( decltype( this ) ) >( this, CAMTOFIRSTPERSON )( this );
 	}
 
-	__forceinline CUserCmd* GetUserCmd( int sequence_number ) {
-		return util::get_method< CUserCmd*( __thiscall* )( decltype( this ), int, int ) >( this, GETUSERCMD )( this, -1, sequence_number );
+	__forceinline CUserCmd* GetUserCmd( int slot, int sequence_number ) {
+		return util::get_method< CUserCmd*( __thiscall* )( decltype( this ), int, int ) >( this, GETUSERCMD )( this, slot, sequence_number );
 	}
 };

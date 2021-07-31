@@ -1,4 +1,4 @@
-#include "includes.h"
+#include "../includes.h"
 
 NetData g_netdata{};;
 
@@ -16,10 +16,11 @@ void NetData::store( ) {
     // get current record and store data.
     data = &m_data[ tickbase % MULTIPLAYER_BACKUP ];
     
-    data->m_tickbase    = tickbase;
-    data->m_punch       = g_cl.m_local->m_aimPunchAngle( );
-    data->m_punch_vel   = g_cl.m_local->m_aimPunchAngleVel( );
-	data->m_view_offset = g_cl.m_local->m_vecViewOffset( );
+    data->m_tickbase          = tickbase;
+    data->m_punch             = g_cl.m_local->m_aimPunchAngle( );
+    data->m_punch_vel         = g_cl.m_local->m_aimPunchAngleVel( );
+	data->m_view_offset       = g_cl.m_local->m_vecViewOffset( );
+	data->m_velocity_modifier = g_cl.m_local->m_flVelocityModifier( );
 }
 
 void NetData::apply( ) {
@@ -27,6 +28,7 @@ void NetData::apply( ) {
     StoredData_t *data;
     ang_t        punch_delta, punch_vel_delta;
 	vec3_t       view_delta;
+    float        modifier_delta;
 
     if( !g_cl.m_processing ) {
 		reset( );
@@ -47,6 +49,7 @@ void NetData::apply( ) {
     punch_delta     = g_cl.m_local->m_aimPunchAngle( ) - data->m_punch;
     punch_vel_delta = g_cl.m_local->m_aimPunchAngleVel( ) - data->m_punch_vel;
 	view_delta      = g_cl.m_local->m_vecViewOffset( ) - data->m_view_offset;
+	modifier_delta  = g_cl.m_local->m_flVelocityModifier( ) - data->m_velocity_modifier;
     
     // set data.
     if( std::abs( punch_delta.x ) < 0.03125f &&
@@ -62,7 +65,10 @@ void NetData::apply( ) {
 	if( std::abs( view_delta.x ) < 0.03125f &&
 		std::abs( view_delta.y ) < 0.03125f &&
 		std::abs( view_delta.z ) < 0.03125f )
-		g_cl.m_local->m_vecViewOffset( ) = data->m_view_offset;
+		g_cl.m_local->m_vecViewOffset( ) = data->m_view_offset;	
+    
+    if( std::abs( modifier_delta ) < 0.03125f )
+		g_cl.m_local->m_flVelocityModifier( ) = data->m_velocity_modifier;
 }
 
 void NetData::reset( ) {

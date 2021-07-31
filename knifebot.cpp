@@ -1,7 +1,7 @@
-#include "includes.h"
+#include "../includes.h"
 
 void Aimbot::knife( ) {
-	struct KnifeTarget_t { bool stab; ang_t angle; LagRecord* record; };
+	struct KnifeTarget_t { bool stab; ang_t angle; LagComp::LagRecord_t* record; };
 	KnifeTarget_t target{};
 
 	// we have no targets.
@@ -10,13 +10,15 @@ void Aimbot::knife( ) {
 
 	// iterate all targets.
 	for( const auto& t : m_targets ) {
+		if (!t->m_player)
+			continue;
 		// this target has no records
 		// should never happen since it wouldnt be a target then.
-		if( t->m_records.empty( ) )
-			continue;
+		//if( t->m_records.empty( ) )
+		//	continue;
 
 		// see if target broke lagcomp.
-		if( g_menu.main.aimbot.lagfix.get( ) && g_lagcomp.StartPrediction( t ) ) {
+		/*if(g_lagcomp.StartPrediction( t ) ) {
 			LagRecord* front = t->m_records.front( ).get( );
 
 			front->cache( );
@@ -36,46 +38,46 @@ void Aimbot::knife( ) {
 		}
 
 		// we can history aim.
-		else {
+		else {*/
 
-			LagRecord* best = g_resolver.FindIdealRecord( t );
-			if( !best )
+			const auto best = g_lagcompensation.GetLatestRecord(t->m_player);
+			if( !best.has_value() )
 				continue;
 
-			best->cache( );
+			//best->cache( );
 
 			// trace with best.
 			for( const auto& a : m_knife_ang ) {
 
 				// check if we can knife.
-				if( !CanKnife( best, a, target.stab ) )
+				if( !CanKnife( best.value(), a, target.stab ) )
 					continue;
 
 				// set target data.
 				target.angle  = a;
-				target.record = best;
+				target.record = best.value();
 				break;
 			}
 
-			LagRecord* last = g_resolver.FindLastRecord( t );
-			if( !last || last == best )
+			const auto last = g_lagcompensation.GetOldestRecord(t->m_player);
+			if( !last.has_value() || last.value() == best.value() )
 				continue;
 
-			last->cache( );
+			//last->cache( );
 
 			// trace with last.
 			for( const auto& a : m_knife_ang ) {
 
 				// check if we can knife.
-				if( !CanKnife( last, a, target.stab ) )
+				if( !CanKnife( last.value(), a, target.stab ) )
 					continue;
 
 				// set target data.
 				target.angle  = a;
-				target.record = last;
+				target.record = last.value();
 				break;
 			}
-		}
+		//}
 
 		// target player has been found already.
 		if( target.record )
@@ -86,7 +88,7 @@ void Aimbot::knife( ) {
 	// set out data and choke.
 	if( target.record ) {
 		// set target tick.
-		g_cl.m_cmd->m_tick = game::TIME_TO_TICKS( target.record->m_pred_time + g_cl.m_lerp );
+		g_cl.m_cmd->m_tick = game::TIME_TO_TICKS( target.record->m_flSimulationTime + g_cl.m_lerp );
 
 		// set view angles.
 		g_cl.m_cmd->m_view_angles = target.angle;
@@ -99,7 +101,7 @@ void Aimbot::knife( ) {
 	}
 }
 
-bool Aimbot::CanKnife( LagRecord* record, ang_t angle, bool& stab ) {
+bool Aimbot::CanKnife(LagComp::LagRecord_t* record, ang_t angle, bool& stab ) {
 	// convert target angle to direction.
 	vec3_t forward;
 	math::AngleVectors( angle, &forward );
@@ -110,10 +112,10 @@ bool Aimbot::CanKnife( LagRecord* record, ang_t angle, bool& stab ) {
 	KnifeTrace( forward, false, &trace );
 
 	// we hit smthing else than we were looking for.
-	if( !trace.m_entity || trace.m_entity != record->m_player )
+	if( !g_cl.m_weapon || !trace.m_entity || trace.m_entity != record->m_pEntity )
 		return false;
 
-	bool armor = record->m_player->m_ArmorValue( ) > 0;
+	bool armor = record->m_pEntity->m_ArmorValue( ) > 0;
 	bool first = g_cl.m_weapon->m_flNextPrimaryAttack( ) + 0.4f < g_csgo.m_globals->m_curtime;
 	bool back  = KnifeIsBehind( record );
 
@@ -122,7 +124,7 @@ bool Aimbot::CanKnife( LagRecord* record, ang_t angle, bool& stab ) {
 	int swing_dmg = m_knife_dmg.swing[ false ][ armor ][ back ];
 
 	// smart knifebot.
-	int health = record->m_player->m_iHealth( );
+	int health = record->m_pEntity->m_iHealth( );
 	if( health <= slash_dmg )
 		stab = false;
 
@@ -161,13 +163,13 @@ bool Aimbot::KnifeTrace( vec3_t dir, bool stab, CGameTrace* trace ) {
 	return true;
 }
 
-bool Aimbot::KnifeIsBehind( LagRecord* record ) {
-	vec3_t delta{ record->m_origin - g_cl.m_shoot_pos };
+bool Aimbot::KnifeIsBehind( LagComp::LagRecord_t* record ) {
+	vec3_t delta{ record->m_vecOrigin - g_cl.m_shoot_pos };
 	delta.z = 0.f;
 	delta.normalize( );
 
 	vec3_t target;
-	math::AngleVectors( record->m_abs_ang, &target );
+	math::AngleVectors( record->m_angAbsAngles, &target );
 	target.z = 0.f;
 
 	return delta.dot( target ) > 0.475f;

@@ -15,6 +15,7 @@
 
 using ulong_t = unsigned long;
 
+
 // windows / stl includes.
 #include <Windows.h>
 #include <cstdint>
@@ -39,70 +40,78 @@ using ulong_t = unsigned long;
 #include <shlobj.h>
 #include <filesystem>
 #include <streambuf>
+#include <optional>
+
+#include <d3d9.h>
+#pragma comment(lib, "d3d9.lib")
+#include <d3dx9.h>
+#pragma comment(lib, "d3dx9.lib")
+#pragma comment(lib, "Freetype.lib")
+#pragma comment(lib, "Urlmon.lib")
+
+#include <playsoundapi.h>
+#include <mmeapi.h> 
+#pragma comment(lib, "Winmm.lib") 
 
 // our custom wrapper.
-#include "unique_vector.h"
-#include "tinyformat.h"
+#include "util/unique_vector.h"
+#include "util/contrib/tinyformat.h"
 
 // other includes.
-#include "hash.h"
-#include "xorstr.h"
-#include "pe.h"
-#include "winapir.h"
-#include "address.h"
-#include "util.h"
-#include "modules.h"
-#include "pattern.h"
-#include "vmt.h"
-#include "stack.h"
-#include "nt.h"
-#include "x86.h"
-#include "syscall.h"
+#include "util/hash.h"
+#include "util/xorstr.h"
+#include "util/pe.h"
+#include "util/winapir.h"
+#include "util/address.h"
+#include "util/modules.h"
+#include "util/pattern.h"
+#include "util/util.h"
+#include "util/vmt.h"
+#include "util/stack.h"
+#include "util/nt.h"
+#include "util/x86.h"
+#include "util/syscall.h"
+#include "util/detours.h"
 
 // hack includes.
-#include "interfaces.h"
-#include "sdk.h"
-#include "csgo.h"
-#include "penetration.h"
-#include "netvars.h"
-#include "entoffsets.h"
-#include "entity.h"
-#include "client.h"
-#include "gamerules.h"
-#include "hooks.h"
-#include "render.h"
-#include "pred.h"
-#include "lagrecord.h"
-#include "visuals.h"
-#include "movement.h"
-#include "bonesetup.h"
-#include "hvh.h"
-#include "lagcomp.h"
-#include "aimbot.h"
-#include "netdata.h"
-#include "chams.h"
+#include "sdk/interfaces.h"
+#include "sdk/sdk.h"
+#include "core/csgo.h"
+#include "hack/penetration.h"
+#include "sdk/netvars.h"
+#include "sdk/entoffsets.h"
+#include "hack/hvh.h"
+#include "sdk/entity.h"
+#include "core/client.h"
+#include "sdk/gamerules.h"
+#include "core/hooks/hooks.h"
+#include "core/hooks/detours.h"
+#include "rendering/render.h"
+#include "hack/pred.h"
+#include "hack/lagcomp.h"
+#include "hack/visuals.h"
+#include "hack/movement.h"
+#include "hack/game_movement.h"
+#include "hack/aimbot.h"
+#include "hack/animations.h"
+#include "hack/tickbase_shift.h"
+#include "hack/netdata.h"
+#include "hack/chams.h"
 #include "notify.h"
-#include "resolver.h"
-#include "grenades.h"
-#include "skins.h"
-#include "events.h"
-#include "shots.h"
+#include "hack/resolver.h"
+#include "hack/grenades.h"
+#include "hack/skins.h"
+#include "hack/events.h"
+#include "hack/hitsounds.h"
+#include "hack/shots.h"
 
 // gui includes.
-#include "json.h"
-#include "base64.h"
-#include "element.h"
-#include "checkbox.h"
-#include "dropdown.h"
-#include "multidropdown.h"
-#include "slider.h"
-#include "colorpicker.h"
-#include "edit.h"
-#include "keybind.h"
-#include "button.h"
-#include "tab.h"
-#include "form.h"
-#include "gui.h"
-#include "callbacks.h"
-#include "menu.h"
+#include "util/contrib/base64.h"
+#include "inputsystem.h"
 #include "config.h"
+
+#include "Rendering/Renderer.h"
+
+#include "gui/Helpers/Easing.h"
+#include "gui/Framework/GUI.h"
+#include "gui/Elements.h"

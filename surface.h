@@ -49,10 +49,20 @@ public:
 		GETNAME       = 36,
 		PAINTTRAVERSE = 41,
 	};
-
+	template<typename FuncType>
+	__forceinline static FuncType CallVFunction(void* ppClass, int index)
+	{
+		int* pVTable = *(int**)ppClass;
+		int dwAddress = pVTable[index];
+		return (FuncType)(dwAddress);
+	}
 public:
 	__forceinline const char* GetName( VPANEL vgui_panel ) {
 		return util::get_method< const char*( __thiscall* )( decltype( this ), uint32_t ) >( this, GETNAME )( this, vgui_panel );
+	}
+	void set_mouse_input_enabled(unsigned int iPanel, bool bState)
+	{
+		return (CallVFunction<void(__thiscall*)(PVOID, int, bool)>(this, 32))(this, iPanel, bState);
 	}
 };
 

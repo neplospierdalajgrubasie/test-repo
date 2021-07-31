@@ -140,6 +140,7 @@ struct DrawModelState_t {
 struct ModelRenderInfo_t {
 	vec3_t				m_origin;			// 0
 	ang_t				m_angles;			// 12
+	PAD( 0x4 );//chuj
 	void*				m_renderable;		// 24
 	const model_t*		m_model;			// 28
 	const matrix3x4_t*	m_model_to_world;	// 32
@@ -172,7 +173,8 @@ public:
 		ALPHAMODULATE           = 27,
 		COLORMODULATE           = 28,
 		SETFLAG                 = 29,
-		GETFLAG                 = 30
+		GETFLAG                 = 30,
+		ISERRORMATERIAL			= 42
 	};
 
 	__forceinline const char* GetName( ) {
@@ -205,6 +207,10 @@ public:
 
 	__forceinline bool GetFlag( int fl ) {
 		return util::get_method< bool( __thiscall* )( void*, int ) >( this, GETFLAG )( this, fl );
+	}
+
+	__forceinline bool IsErrorMaterial() {
+		return util::get_method< bool(__thiscall*)(void*) >(this, ISERRORMATERIAL)(this);
 	}
 };
 
@@ -280,7 +286,6 @@ class IVModelRender {
 public:
 	enum indices : size_t {
 		FORCEDMATERIALOVERRIDE = 1,
-		ISFORCEDMATERIALOVERRIDE = 2,
 		DRAWMODELEXECUTE       = 21
 	};
 
@@ -289,10 +294,6 @@ public:
 	//__forceinline void ForcedMaterialOverride( IMaterial* mat ) {
 	//	return util::get_method< void( __thiscall* )( void *, IMaterial *, int, int ) >( this, FORCEDMATERIALOVERRIDE )( this, mat, 0, 0 );
 	//}
-
-	__forceinline bool IsForcedMaterialOverride( ) {
-		return util::get_method< bool( __thiscall* )( void * ) >( this, ISFORCEDMATERIALOVERRIDE )( this );
-	}
 };
 
 class IVRenderView {

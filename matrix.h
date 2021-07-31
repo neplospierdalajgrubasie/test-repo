@@ -79,29 +79,29 @@ public:
 	float m_flMatVal[ 3 ][ 4 ];
 };
 
-class BoneArray : public matrix3x4_t {
-public:
-	bool get_bone( vec3_t & out, int bone = 0 ) {
-		if( bone < 0 || bone >= 128 )
-			return false;
-
-		matrix3x4_t* bone_matrix = &this[ bone ];
-
-		if( !bone_matrix )
-			return false;
-
-		out = { bone_matrix->m_flMatVal[ 0 ][ 3 ], bone_matrix->m_flMatVal[ 1 ][ 3 ], bone_matrix->m_flMatVal[ 2 ][ 3 ] };
-
-		return true;
-	}
-};
-
 class __declspec( align( 16 ) ) matrix3x4a_t : public matrix3x4_t {
 public:
 	__forceinline matrix3x4a_t& operator=( const matrix3x4_t& src ) {
 		std::memcpy( Base( ), src.Base( ), sizeof( float ) * 3 * 4 );
 		return *this;
 	};
+};
+
+class BoneArray : public matrix3x4a_t {
+public:
+	bool get_bone(vec3_t& out, int bone = 0) {
+		if (bone < 0 || bone >= 128)
+			return false;
+
+		matrix3x4_t* bone_matrix = &this[bone];
+
+		if (!bone_matrix)
+			return false;
+
+		out = { bone_matrix->m_flMatVal[0][3], bone_matrix->m_flMatVal[1][3], bone_matrix->m_flMatVal[2][3] };
+
+		return true;
+	}
 };
 
 class VMatrix {

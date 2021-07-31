@@ -1,10 +1,13 @@
 #pragma once
 
+class Sphere;
+
 enum HitscanMode : int {
-	NORMAL  = 0,
-	LETHAL  = 1,
+	NORMAL = 0,
+	LETHAL = 1,
 	LETHAL2 = 3,
-	PREFER  = 4
+	PREFER = 4,
+	PREFER_SAFEPOINT = 5,
 };
 
 struct AnimationBackup_t {
@@ -18,71 +21,61 @@ struct AnimationBackup_t {
 struct HitscanData_t {
 	float  m_damage;
 	vec3_t m_pos;
+	int m_hitbox;
+	bool m_safepoint;
+	int m_mode;
 
-	__forceinline HitscanData_t( ) : m_damage{ 0.f }, m_pos{} {}
+	__forceinline HitscanData_t() : m_damage{ 0.f }, m_pos{ }, m_hitbox{ }, m_safepoint{}, m_mode{} {}
 };
 
 struct HitscanBox_t {
 	int         m_index;
 	HitscanMode m_mode;
+	bool m_safepoint;
 
 	__forceinline bool operator==( const HitscanBox_t& c ) const {
-		return m_index == c.m_index && m_mode == c.m_mode;
+		return m_index == c.m_index && m_mode == c.m_mode && m_safepoint == c.m_safepoint;
 	}
 };
 
 class AimPlayer {
 public:
-	using records_t   = std::deque< std::shared_ptr< LagRecord > >;
 	using hitboxcan_t = stdpp::unique_vector< HitscanBox_t >;
 
 public:
 	// essential data.
-	Player*   m_player;
+	Player* m_player;
 	float	  m_spawn;
-	records_t m_records;
 
 	// aimbot data.
 	hitboxcan_t m_hitboxes;
-	
+
 	// resolve data.
 	int       m_shots;
 	int       m_missed_shots;
-	LagRecord m_walk_record;
+	float     m_delta;
+	float	  m_last_resolve;
+	bool      m_extending;
 
-	float     m_body_update;
-	bool      m_moved;
+	float m_abs_angles;
 
-	int m_stand_index;
-	int m_stand_index2;
-	int m_body_index;
-
-
-	// data about the LBY proxy.
-	float m_body;
-	float m_old_body;
-
-	//std::deque< float >            m_lbyt_update;
-	//std::deque< float >			   m_prefer_stand;
-	//std::deque< float >            m_prefer_air;
+	BoneArray* m_matrix;
 
 public:
-	void UpdateAnimations( LagRecord* record );
+
 	void OnNetUpdate( Player* player );
 	void OnRoundStart( Player* player );
-	void SetupHitboxes( LagRecord* record, bool history );
-	bool SetupHitboxPoints( LagRecord* record, BoneArray* bones, int index, std::vector< vec3_t >& points );
-	bool GetBestAimPosition( vec3_t& aim, float& damage, LagRecord* record );
+	void SetupHitboxes( LagComp::LagRecord_t* record, bool history );
+	bool SetupHitboxPoints( LagComp::LagRecord_t* record, BoneArray* bones, int index, std::vector< vec3_t >& points );
+	bool GetBestAimPosition( vec3_t& aim, float& damage, int& hitbox, LagComp::LagRecord_t* record, float& min_damage );
 
 public:
 	void reset( ) {
-		m_player       = nullptr;
-		m_spawn        = 0.f;
-		m_walk_record  = LagRecord{};
-		m_shots        = 0;
+		m_player = nullptr;
+		m_spawn = 0.f;
+		m_shots = 0;
 		m_missed_shots = 0;
 
-		m_records.clear( );
 		m_hitboxes.clear( );
 	}
 };
@@ -90,13 +83,12 @@ public:
 class Aimbot {
 private:
 	struct target_t {
-		Player*    m_player;
+		Player* m_player;
 		AimPlayer* m_data;
 	};
 
 	struct knife_target_t {
 		target_t  m_target;
-		LagRecord m_record;
 	};
 
 	struct table_t {
@@ -116,7 +108,7 @@ public:
 	std::array< AimPlayer, 64 > m_players;
 	std::vector< AimPlayer* >   m_targets;
 
-	BackupRecord m_backup[ 64 ];
+	AimPlayer* m_old_target;
 
 	// target selection stuff.
 	float m_best_dist;
@@ -125,19 +117,23 @@ public:
 	int   m_best_hp;
 	float m_best_lag;
 	float m_best_height;
-	
+
 	// found target stuff.
-	Player*    m_target;
+	Player* m_target;
 	ang_t      m_angle;
 	vec3_t     m_aim;
 	float      m_damage;
-	LagRecord* m_record;
+	LagComp::LagRecord_t* m_record;
 
-	// fake latency stuff.
-	bool       m_fake_latency;
-
+	int m_hitbox;
 	bool m_stop;
+	bool m_override_damage;
+	bool m_force_body;
+	bool m_shoot_next_tick;
+	bool m_force_safepoint;
+	BoneArray* m_current_matrix;
 
+	std::vector<Sphere> m_current_sphere;
 public:
 	__forceinline void reset( ) {
 		// reset aimbot data.
@@ -167,22 +163,24 @@ public:
 		return true;
 	}
 
+	bool CanHit(vec3_t start, vec3_t end, LagComp::LagRecord_t* record, int box, bool in_shot = false, BoneArray* bones = nullptr);
+
 public:
 	// aimbot.
 	void init( );
 	void StripAttack( );
 	void think( );
 	void find( );
-	bool CheckHitchance( Player* player, const ang_t& angle );
-	bool SelectTarget( LagRecord* record, const vec3_t& aim, float damage );
+	bool CheckHitchance( Player* player, const ang_t& angle, LagComp::LagRecord_t* record, int hitbox );
+	bool SelectTarget( LagComp::LagRecord_t* record, const vec3_t& aim, float damage );
 	void apply( );
 	void NoSpread( );
 
 	// knifebot.
 	void knife( );
-	bool CanKnife( LagRecord* record, ang_t angle, bool& stab );
+	bool CanKnife( LagComp::LagRecord_t* record, ang_t angle, bool& stab );
 	bool KnifeTrace( vec3_t dir, bool stab, CGameTrace* trace );
-	bool KnifeIsBehind( LagRecord* record );
+	bool KnifeIsBehind( LagComp::LagRecord_t* record );
 };
 
 extern Aimbot g_aimbot;

@@ -18,24 +18,25 @@ private:
 	std::vector< std::shared_ptr< NotifyText > > m_notify_text;
 
 public:
-	__forceinline Notify( ) : m_notify_text{} {}
+	__forceinline Notify( ) : m_notify_text{ } {}
 
-	__forceinline void add( const std::string& text, Color color = colors::white, float time = 8.f, bool console = true ) {
+	__forceinline void add( const std::string& text, Color color = colors::white, float time = 8.f, bool console = true, bool visual = true ) {
 		// modelled after 'CConPanel::AddToNotify'
-		m_notify_text.push_back( std::make_shared< NotifyText >( text, color, time ) );
+		if( visual )
+			m_notify_text.push_back( std::make_shared< NotifyText >( text, color, time ) );
 
 		if( console )
-		    g_cl.print( text );
+			g_cl.print( text );
 	}
 
 	// modelled after 'CConPanel::DrawNotify' and 'CConPanel::ShouldDraw'
 	void think( ) {
-		int		x{ 8 }, y{ 5 }, size{ render::menu_shade.m_size.m_height + 1 };
+		int		x{ 8 }, y{ 5 }, size{ render::console.m_size.m_height + 1 };
 		Color	color;
 		float	left;
 
 		// update lifetimes.
-		for( size_t i{}; i < m_notify_text.size( ); ++i ) {
+		for( size_t i{ }; i < m_notify_text.size( ); ++i ) {
 			auto notify = m_notify_text[ i ];
 
 			notify->m_time -= g_csgo.m_globals->m_frametime;
@@ -51,7 +52,7 @@ public:
 			return;
 
 		// iterate entries.
-		for( size_t i{}; i < m_notify_text.size( ); ++i ) {
+		for( size_t i{ }; i < m_notify_text.size( ); ++i ) {
 			auto notify = m_notify_text[ i ];
 
 			left = notify->m_time;
@@ -72,7 +73,7 @@ public:
 			else
 				color.a( ) = 255;
 
-			render::menu_shade.string( x, y, color, notify->m_text );
+			render::console.string( x, y, color, notify->m_text );
 			y += size;
 		}
 	}

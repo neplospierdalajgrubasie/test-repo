@@ -1,10 +1,10 @@
-#include "includes.h"
+#include "../../../includes.h"
 
 void Hooks::ComputeShadowDepthTextures( const CViewSetup &view, bool unk ) {
 	if( !unk )
 		return g_hooks.m_shadow_mgr.GetOldMethod< ComputeShadowDepthTextures_t >( IClientShadowMgr::COMPUTESHADOWDEPTHTEXTURES )( this, view, unk );
 
-	if( g_menu.main.visuals.disableteam.get( ) ) {
+	if(g_cfg[XOR("visuals_misc_no_draw_team")].get<bool>()) {
 		for( int i{ 1 }; i <= g_csgo.m_globals->m_max_clients; ++i ) {
 			Player* player = g_csgo.m_entlist->GetClientEntity< Player* >( i );
 

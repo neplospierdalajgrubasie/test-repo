@@ -1,23 +1,23 @@
-#include "includes.h"
+#include "../includes.h"
 
 namespace render {
-	Font menu;;
-	Font menu_shade;;
 	Font esp;;
-	Font esp_small;;
+	Font pixel;;
+	Font console;;
 	Font hud;;
 	Font cs;;
 	Font indicator;;
 }
 
 void render::init( ) {
-	menu       = Font( XOR( "Tahoma" ), 12, FW_NORMAL, FONTFLAG_NONE );
-	menu_shade = Font( XOR( "Tahoma" ), 12, FW_NORMAL, FONTFLAG_DROPSHADOW );
-	esp        = Font( XOR( "Verdana" ), 12, FW_BOLD, FONTFLAG_DROPSHADOW );
-	esp_small  = Font( XOR( "Small Fonts" ), 8, FW_NORMAL, FONTFLAG_OUTLINE );
-	hud        = Font( XOR( "Tahoma" ), 16, FW_NORMAL, FONTFLAG_ANTIALIAS );
-	cs         = Font( XOR( "Counter-Strike" ), 28, FW_MEDIUM, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
-	indicator  = Font( XOR( "Verdana" ), 26, FW_BOLD, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
+	esp = Font( XOR( "Tahoma" ), 11, FW_NORMAL, FONTFLAG_DROPSHADOW );
+	pixel = Font( XOR( "04B03" ), 8, FW_NORMAL, FONTFLAG_OUTLINE );
+	console = Font( XOR( "Lucida Console" ), 10, FW_DONTCARE, FONTFLAG_DROPSHADOW );
+	hud = Font( XOR( "Tahoma" ), 12, FW_NORMAL, FONTFLAG_DROPSHADOW );
+	cs = Font( XOR( "Counter-Strike" ), 28, FW_MEDIUM, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
+	indicator = Font( XOR( "Verdana" ), 13, FW_BOLD, FONTFLAG_ANTIALIAS | FONTFLAG_DROPSHADOW );
+
+	g_csgo.m_engine->GetScreenSize( g_cl.m_width, g_cl.m_height );
 }
 
 bool render::WorldToScreen( const vec3_t& world, vec2_t& screen ) {
@@ -26,7 +26,7 @@ bool render::WorldToScreen( const vec3_t& world, vec2_t& screen ) {
 	const VMatrix& matrix = g_csgo.m_engine->WorldToScreenMatrix( );
 
 	// check if it's in view first.
-    // note - dex; w is below 0 when world position is around -90 / +90 from the player's camera on the y axis.
+	// note - dex; w is below 0 when world position is around -90 / +90 from the player's camera on the y axis.
 	w = matrix[ 3 ][ 0 ] * world.x + matrix[ 3 ][ 1 ] * world.y + matrix[ 3 ][ 2 ] * world.z + matrix[ 3 ][ 3 ];
 	if( w < 0.001f )
 		return false;
@@ -47,6 +47,24 @@ bool render::WorldToScreen( const vec3_t& world, vec2_t& screen ) {
 void render::line( vec2_t v0, vec2_t v1, Color color ) {
 	g_csgo.m_surface->DrawSetColor( color );
 	g_csgo.m_surface->DrawLine( v0.x, v0.y, v1.x, v1.y );
+}
+
+void render::world_circle( vec3_t origin, float radius, Color color ) {
+	vec2_t previous_screen_pos, screen_pos;
+
+	g_csgo.m_surface->DrawSetColor( color );
+	float step = M_PI * 2.0 / 2047;
+
+	for( float rotation = 0; rotation < ( M_PI * 2.0 ); rotation += step ) {
+		vec3_t pos( radius * cos( rotation ) + origin.x, radius * sin( rotation ) + origin.y, origin.z );
+
+		if( render::WorldToScreen( pos, screen_pos ) ) {
+			if( previous_screen_pos.valid( ) && screen_pos.valid( ) && previous_screen_pos != screen_pos ) {
+				g_csgo.m_surface->DrawLine( previous_screen_pos.x, previous_screen_pos.y, screen_pos.x, screen_pos.y );
+			}
+			previous_screen_pos = screen_pos;
+		}
+	}
 }
 
 void render::line( int x0, int y0, int x1, int y1, Color color ) {
@@ -82,7 +100,7 @@ void render::circle( int x, int y, int radius, int segments, Color color ) {
 	g_csgo.m_surface->DrawSetColor( color );
 	g_csgo.m_surface->DrawSetTexture( texture );
 
-	std::vector< Vertex > vertices{};
+	std::vector< Vertex > vertices{ };
 
 	float step = math::pi_2 / segments;
 	for( float i{ 0.f }; i < math::pi_2; i += step )
@@ -99,16 +117,16 @@ void render::gradient( int x, int y, int w, int h, Color color1, Color color2 ) 
 }
 
 void render::sphere( vec3_t origin, float radius, float angle, float scale, Color color ) {
-	std::vector< Vertex > vertices{};
+	std::vector< Vertex > vertices{ };
 
 	// compute angle step for input radius and precision.
 	float step = ( 1.f / radius ) + math::deg_to_rad( angle );
 
-	for( float lat{}; lat < ( math::pi * scale ); lat += step ) {
+	for( float lat{ }; lat < ( math::pi * scale ); lat += step ) {
 		// reset.
 		vertices.clear( );
 
-		for( float lon{}; lon < math::pi_2; lon += step ) {
+		for( float lon{ }; lon < math::pi_2; lon += step ) {
 			vec3_t point{
 				origin.x + ( radius * std::sin( lat ) * std::cos( lon ) ),
 				origin.y + ( radius * std::sin( lat ) * std::sin( lon ) ),
@@ -134,12 +152,12 @@ Vertex render::RotateVertex( const vec2_t& p, const Vertex& v, float angle ) {
 	float s = std::sin( math::deg_to_rad( angle ) );
 
 	return {
-        p.x + ( v.m_pos.x - p.x ) * c - ( v.m_pos.y - p.y ) * s, 
-        p.y + ( v.m_pos.x - p.x ) * s + ( v.m_pos.y - p.y ) * c 
-    };
+		p.x + ( v.m_pos.x - p.x ) * c - ( v.m_pos.y - p.y ) * s,
+		p.y + ( v.m_pos.x - p.x ) * s + ( v.m_pos.y - p.y ) * c
+	};
 }
 
-void render::Font::string( int x, int y, Color color, const std::string& text,StringFlags_t flags /*= render::ALIGN_LEFT */ ) {
+void render::Font::string( int x, int y, Color color, const std::string& text, StringFlags_t flags /*= render::ALIGN_LEFT */ ) {
 	wstring( x, y, color, util::MultiByteToWide( text ), flags );
 }
 

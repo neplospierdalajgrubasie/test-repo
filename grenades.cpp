@@ -1,24 +1,24 @@
-#include "includes.h"
+#include "../includes.h"
 
-Grenades g_grenades{};;
+Grenades g_grenades{ };;
 
 void Grenades::reset( ) {
-	m_start    = vec3_t{};
-	m_move     = vec3_t{};
-	m_velocity = vec3_t{};
-	m_vel      = 0.f;
-	m_power    = 0.f;
+	m_start = vec3_t{ };
+	m_move = vec3_t{ };
+	m_velocity = vec3_t{ };
+	m_vel = 0.f;
+	m_power = 0.f;
 
 	m_path.clear( );
 	m_bounces.clear( );
 }
 
 void Grenades::paint( ) {
-    static CTraceFilterSimple_game filter{};
+	static CTraceFilterSimple_game filter{ };
 	CGameTrace	                   trace;
 	std::pair< float, Player* >    target{ 0.f, nullptr };
 
-	if( !g_menu.main.visuals.tracers.get( ) )
+	if( !g_cfg[ XOR( "visuals_misc_grenade_prediction" ) ].get<bool>( ) )
 		return;
 
 	// we dont want to do this if dead.
@@ -30,8 +30,8 @@ void Grenades::paint( ) {
 	if( m_path.size( ) < 2 )
 		return;
 
-    // setup trace filter for later.
-    filter.SetPassEntity( g_cl.m_local );
+	// setup trace filter for later.
+	filter.SetPassEntity( g_cl.m_local );
 
 	// previous point, set to last point.
 	// or actually.. the first point, we are drawing in reverse.
@@ -42,7 +42,7 @@ void Grenades::paint( ) {
 		vec2_t screen0, screen1;
 
 		if( render::WorldToScreen( prev, screen0 ) && render::WorldToScreen( cur, screen1 ) )
-			render::line( screen0, screen1, { 60, 180, 225 } );
+			render::line( screen0, screen1, g_cfg[ XOR( "visuals_misc_grenade_prediction_color1" ) ].get_color( ) );
 
 		// store point for next iteration.
 		prev = cur;
@@ -69,14 +69,14 @@ void Grenades::paint( ) {
 				continue;
 
 			// check if our path was obstructed by anything using a trace.
-			g_csgo.m_engine_trace->TraceRay( Ray( prev, center ), MASK_SHOT, (ITraceFilter *)&filter, &trace );
+			g_csgo.m_engine_trace->TraceRay( Ray( prev, center ), MASK_SHOT, ( ITraceFilter* )&filter, &trace );
 
 			// something went wrong here.
 			if( !trace.m_entity || trace.m_entity != player )
 				continue;
 
 			// rather 'interesting' formula by valve to compute damage.
-			float d      = ( delta.length( ) - 25.f ) / 140.f;
+			float d = ( delta.length( ) - 25.f ) / 140.f;
 			float damage = 105.f * std::exp( -d * d );
 
 			// scale damage.
@@ -87,7 +87,7 @@ void Grenades::paint( ) {
 
 			// better target?
 			if( damage > target.first ) {
-				target.first  = damage;
+				target.first = damage;
 				target.second = player;
 			}
 		}
@@ -102,15 +102,16 @@ void Grenades::paint( ) {
 			m_bounces.back( ).color = { 0, 255, 0, 255 };
 
 		if( render::WorldToScreen( prev, screen ) )
-			render::esp_small.string( screen.x, screen.y + 5, { 255, 255, 255, 0xb4 }, tfm::format( XOR( "%i" ), ( int )target.first ), render::ALIGN_CENTER );
+			render::esp.string( screen.x, screen.y + 5, { 255, 255, 255, 0xb4 }, tfm::format( XOR( "%i" ), ( int )target.first ), render::ALIGN_CENTER );
 	}
 
 	// render bounces.
 	for( const auto& b : m_bounces ) {
 		vec2_t screen;
 
-		if( render::WorldToScreen( b.point, screen ) )
+		if( render::WorldToScreen( b.point, screen ) ) {
 			render::rect( screen.x - 2, screen.y - 2, 4, 4, b.color );
+		}
 	}
 }
 
@@ -120,25 +121,25 @@ void Grenades::think( ) {
 	// reset some data.
 	reset( );
 
-	if( !g_menu.main.visuals.tracers.get( ) )
+	if( !g_cfg[ XOR( "visuals_misc_grenade_prediction" ) ].get<bool>( ) )
 		return;
 
-	if( !g_cl.m_processing )
+	if( !g_cl.m_processing || !g_cl.m_weapon || !g_cl.m_weapon_info )
 		return;
 
 	// validate nade.
-	if( g_cl.m_weapon_type != WEAPONTYPE_GRENADE )
+	if( g_cl.m_weapon && !g_cl.m_weapon->IsGrenade( ) )
 		return;
 
-	attack  = ( g_cl.m_cmd->m_buttons & IN_ATTACK );
+	attack = ( g_cl.m_cmd->m_buttons & IN_ATTACK );
 	attack2 = ( g_cl.m_cmd->m_buttons & IN_ATTACK2 );
 
 	if( !attack && !attack2 )
 		return;
 
-	m_id    = g_cl.m_weapon_id;
+	m_id = g_cl.m_weapon_id;
 	m_power = g_cl.m_weapon->m_flThrowStrength( );
-	m_vel   = g_cl.m_weapon_info->m_throw_velocity;
+	m_vel = g_cl.m_weapon_info->flThrowVelocity;
 
 	simulate( );
 }
@@ -172,10 +173,10 @@ void Grenades::simulate( ) {
 			timer = 0;
 
 		// increment timer.
-		else 
-            ++timer;
+		else
+			++timer;
 
-		if( m_velocity == vec3_t{} )
+		if( m_velocity == vec3_t{ } )
 			break;
 	}
 
@@ -204,7 +205,7 @@ void Grenades::setup( ) {
 	float pitch = angle.x;
 
 	// correct the pitch.
-	if( pitch < -90.f ) 
+	if( pitch < -90.f )
 		pitch += 360.f;
 
 	else if( pitch > 90.f )
@@ -249,7 +250,7 @@ void Grenades::setup( ) {
 
 	// finally, calculate the velocity where we will start off with.
 	// weird formula, valve..
-	m_velocity = g_cl.m_local->m_vecVelocity( ) ;
+	m_velocity = g_cl.m_local->m_vecVelocity( );
 	m_velocity *= 1.25f;
 	m_velocity += ( forward * vel );
 }
@@ -303,7 +304,7 @@ bool Grenades::detonate( size_t tick, CGameTrace& trace ) {
 	switch( m_id ) {
 	case FLASHBANG:
 	case HEGRENADE:
-		return time >= 1.5f && !( tick % game::TIME_TO_TICKS( 0.2f ) ); 
+		return time >= 1.5f && !( tick % game::TIME_TO_TICKS( 0.2f ) );
 
 	case SMOKE:
 		return m_velocity.length( ) <= 0.1f && !( tick % game::TIME_TO_TICKS( 0.2f ) );
@@ -334,22 +335,22 @@ void Grenades::ResolveFlyCollisionBounce( CGameTrace& trace ) {
 	// assume all surfaces have the same elasticity
 	float surface = 1.f;
 
-    if( trace.m_entity ) {
-    	if( game::IsBreakable( trace.m_entity ) ) {
-    		if( !trace.m_entity->is( HASH( "CFuncBrush" ) ) &&
-    			!trace.m_entity->is( HASH( "CBaseDoor" ) ) &&
-    			!trace.m_entity->is( HASH( "CCSPlayer" ) ) &&
-    			!trace.m_entity->is( HASH( "CBaseEntity" ) ) ) {
-    
-    			// move object.
-    			PhysicsPushEntity( m_start, m_move, trace, trace.m_entity );
-    
-    			// deduct velocity penalty.
-    			m_velocity *= 0.4f;
-    			return;
-    		}
-    	}
-    }
+	if( trace.m_entity ) {
+		if( game::IsBreakable( trace.m_entity ) ) {
+			if( !trace.m_entity->is( HASH( "CFuncBrush" ) ) &&
+				!trace.m_entity->is( HASH( "CBaseDoor" ) ) &&
+				!trace.m_entity->is( HASH( "CCSPlayer" ) ) &&
+				!trace.m_entity->is( HASH( "CBaseEntity" ) ) ) {
+
+				// move object.
+				PhysicsPushEntity( m_start, m_move, trace, trace.m_entity );
+
+				// deduct velocity penalty.
+				m_velocity *= 0.4f;
+				return;
+			}
+		}
+	}
 
 	// combine elasticities together.
 	float elasticity = 0.45f * surface;
@@ -376,7 +377,7 @@ void Grenades::ResolveFlyCollisionBounce( CGameTrace& trace ) {
 		// are we going too slow?
 		// just stop completely.
 		if( speed < 400.f )
-			m_velocity = vec3_t{};
+			m_velocity = vec3_t{ };
 
 		else {
 			// set velocity.
@@ -414,11 +415,11 @@ void Grenades::PhysicsPushEntity( vec3_t& start, const vec3_t& move, CGameTrace&
 
 void Grenades::TraceHull( const vec3_t& start, const vec3_t& end, CGameTrace& trace, Entity* ent ) {
 	// create trace filter.
-    static CTraceFilterSimple_game filter{};
+	static CTraceFilterSimple_game filter{ };
 
-    filter.SetPassEntity( ent );
+	filter.SetPassEntity( ent );
 
-	g_csgo.m_engine_trace->TraceRay( Ray( start, end, { -2.f, -2.f, -2.f }, { 2.f, 2.f, 2.f } ), MASK_SOLID, (ITraceFilter *)&filter, &trace );
+	g_csgo.m_engine_trace->TraceRay( Ray( start, end, { -2.f, -2.f, -2.f }, { 2.f, 2.f, 2.f } ), MASK_SOLID, ( ITraceFilter* )&filter, &trace );
 }
 
 void Grenades::PhysicsAddGravityMove( vec3_t& move ) {
@@ -450,7 +451,7 @@ void Grenades::PhysicsClipVelocity( const vec3_t& in, const vec3_t& normal, vec3
 
 	float backoff = in.dot( normal ) * overbounce;
 
-	for( int i{}; i < 3; ++i ) {
+	for( int i{ }; i < 3; ++i ) {
 		out[ i ] = in[ i ] - ( normal[ i ] * backoff );
 
 		if( out[ i ] > -STOP_EPSILON && out[ i ] < STOP_EPSILON )

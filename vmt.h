@@ -1,123 +1,134 @@
 #pragma once
 
+struct MemoryProtection_t {
+	MemoryProtection_t(LPVOID address, uint32_t size, DWORD flags) : m_address(address), m_size(size), m_flags(0) {
+		if (!VirtualProtect(m_address, m_size, flags, &m_flags))
+			throw std::system_error(GetLastError(), std::system_category(), XOR("Failed to protect the page-region"));
+	}
+	~MemoryProtection_t() {
+		VirtualProtect(m_address, m_size, m_flags, &m_flags);
+	}
+
+	LPVOID m_address;
+	uint32_t m_size;
+	DWORD m_flags;
+};
+
+#define INIT_MEM_PROTECT_RW( address, size ) auto protect = MemoryProtection_t( address, size, PAGE_READWRITE );
+#define INIT_MEM_PROTECT_R( address, size ) auto protect = MemoryProtection_t( address, size, PAGE_READONLY );
+#define INIT_MEM_PROTECT_W( address, size ) auto protect = MemoryProtection_t( address, size, PAGE_WRITECOPY );
+#define INIT_MEM_PROTECT( address, size, flags ) auto protect = MemoryProtection_t( address, size, flags );
+
+
 class VMT {
-private:
-	Address                      m_base;
-	Address*                     m_old_vmt;
-	std::unique_ptr< Address[] > m_new_vmt;
-	size_t                       m_size;
-	bool                         m_rtti;
-
-private:
-	__forceinline size_t count_methods( ) {
-		size_t i{ 0u };
-
-		while( Address::valid( m_old_vmt[ i ] ) )
-			++i;
-
-		return i;
-	}
-
 public:
-	// default ctor.
-	__forceinline VMT( ) : m_base{}, m_old_vmt{}, m_new_vmt{}, m_size{}, m_rtti{} {}
 
-	// ctor.
-	__forceinline VMT( Address base, bool rtti = true ) : m_base{}, m_old_vmt{}, m_new_vmt{}, m_size{}, m_rtti{} {
-		init( base, rtti );
+	VMT() = default;
+	VMT(uintptr_t ptr) : m_vtable(reinterpret_cast<uintptr_t**>(ptr)), m_table_length(0), m_orig(nullptr), m_replace(nullptr) {};
+	VMT(void* ptr) : m_vtable(reinterpret_cast<uintptr_t**>(ptr)), m_table_length(0), m_orig(nullptr), m_replace(nullptr) {};
+	VMT(Address ptr) : m_vtable(ptr.as<uintptr_t**>()), m_table_length(0), m_orig(nullptr), m_replace(nullptr) {};
+
+	uint32_t GetVirtualTableLength(Address table)
+	{
+		auto length = uint32_t{};
+
+		// Walk through every function until it is no longer valid
+		for (length = 0; table.as<uintptr_t*>()[length]; length++)
+			if (IS_INTRESOURCE(table.as<uintptr_t*>()[length]))
+				break;
+
+		return length;
 	}
 
-	// dtor.
-	__forceinline ~VMT( ) {
-		//reset( );
-	}
-
-	// reset entire class.
-	__forceinline void reset( ) {
-		m_new_vmt.reset( );
-
-		if( m_base )
-			m_base.set( m_old_vmt );
-
-		m_base = Address{};
-		m_old_vmt = nullptr;
-		m_size = 0;
-		m_rtti = false;
-	}
-
-	// setup and replace vmt.
-	__forceinline void init( Address base, bool rtti = true ) {
-		// save base class.
-		m_base = base;
-
-		// get ptr to old VMT.
-		m_old_vmt = base.to< Address* >( );
-		if( !m_old_vmt )
-			return;
-
-		// count number of methods in old VMT.
-		m_size = count_methods( );
-		if( !m_size )
-			return;
-
-		// allocate new VMT.
-		m_new_vmt = std::make_unique< Address[] >( rtti ? m_size + 1 : m_size );
-		if( !m_new_vmt )
-			return;
-
-		// get raw memory ptr.
-		Address vmt = ( uintptr_t )m_new_vmt.get( );
-
-		if( rtti ) {
-			// copy VMT, starting from RTTI.
-			std::memcpy( vmt, m_old_vmt - 1, ( m_size + 1 ) * sizeof( Address ) );
-
-			// VMTs are ( usually ) stored in the .data section we should be able to just overwrite it, so let's do that here.
-			// also, since we've copied RTTI ptr then point the new table at index 1 ( index 0 contains RTTI ptr ).
-			base.set( vmt + sizeof( Address ) );
-
-			// we've sucesfully copied the RTTI ptr.
-			m_rtti = true;
-		}
-
-		else {
-			// copy vmt.
-			std::memcpy( vmt, m_old_vmt, m_size * sizeof( Address ) );
-
-			// since VMTs are ( usually ) stored in the .data section we should be able to just overwrite it, so let's do that here.
-			base.set( vmt );
-		}
-	}
-
-	template< typename t = Address >
-	__forceinline t add( size_t index, void* function_ptr ) {
-		size_t vmt_index{ m_rtti ? index + 1 : index };
-
-		// sanity check some stuff first.
-		if( !m_old_vmt || !m_new_vmt || vmt_index > m_size )
-            return t{};
-
-		// redirect.
-		m_new_vmt[ vmt_index ] = ( uintptr_t )function_ptr;
-
-		return m_old_vmt[ index ].as< t >( );
-	}
-
-	__forceinline bool remove( size_t index ) {
-		size_t vmt_index{ m_rtti ? index + 1 : index };
-
-		// sanity check some stuff first.
-		if( !m_old_vmt || !m_new_vmt || vmt_index > m_size )
+	bool Init() {
+		if (!m_vtable)
 			return false;
 
-		// redirect.
-		m_new_vmt[ vmt_index ] = m_old_vmt[ index ];
+		INIT_MEM_PROTECT_RW(m_vtable, sizeof(uintptr_t));
+
+		/// Store old vtable
+		m_orig = *m_vtable;
+
+		m_table_length = GetVirtualTableLength(m_orig);
+
+		/// Either faulty vtable or function fail
+		if (!m_table_length)
+			return false;
+
+		/// Allocate new vtable ( +1 for RTTI )
+		m_replace = std::make_unique<uintptr_t[]>(m_table_length + 1);
+
+		/// instantiate all values with 0
+		std::memset(m_replace.get(),
+			NULL,
+			m_table_length * sizeof(uintptr_t) + sizeof(uintptr_t));
+
+		/// The following two memcpy's could be just made 
+		/// into 1 call but for demonstration purposes
+		/// I'll leave it like that
+
+		/// Copy old table
+		/// Skip first 4 bytes to later insert RTTI there
+		std::memcpy(&m_replace[1],
+			m_orig,
+			m_table_length * sizeof(uintptr_t));
+
+		/// Copy RTTI
+		std::memcpy(m_replace.get(),
+			&m_orig[-1],
+			sizeof(uintptr_t));
+
+		/// Apply new vtable, again skipping the first 4
+		/// bytes since that's where the RTTI is now located
+		*m_vtable = &m_replace[1];
 
 		return true;
 	}
 
-	template< typename t = Address >
-	__forceinline t GetOldMethod( size_t index ) {
-		return m_old_vmt[ index ].as< t >( );
+	template< typename t >
+	void add(const uint16_t index, t replace_function) {
+		/// Is index out of bounds?
+		if (index < 0 || index > m_table_length) {
+			throw std::out_of_range(tfm::format(XOR("VMT::Hook - Trying to Hook at index %i while max index is %i"), index, m_table_length));
+		}
+
+		m_replace[index + 1] = reinterpret_cast<uintptr_t>(replace_function);
 	}
+
+	template< typename t >
+	t GetOldMethod(const uint16_t index) {
+		/// Is index out of bounds?
+		if (index < 0 || index > m_table_length) {
+			throw std::out_of_range(tfm::format(XOR("VMT::GetOldMethod - Trying to get original function of index %i while max index is %i"), index, m_table_length));
+		}
+
+		return reinterpret_cast<t>(m_orig[index]);
+	}
+
+	void UnHook(const uint16_t index) {
+		/// Is index out of bounds?
+		if (index < 0 || index > m_table_length) {
+			throw std::out_of_range(tfm::format(XOR("VMT::UnHook - Trying to UnHook at index %i while max index is %i"), index, m_table_length));
+		}
+
+		m_replace[index + 1] = m_orig[index];
+	}
+
+	void UnHook() {
+		/// Check if it was already restored
+		if (!m_orig)
+			return;
+
+		INIT_MEM_PROTECT_RW(m_vtable, sizeof(uintptr_t));
+
+		*m_vtable = m_orig;
+
+		/// Prevent double unhook
+		m_orig = nullptr;
+	}
+
+	uintptr_t** m_vtable;
+	uint16_t m_table_length;
+	uintptr_t* m_orig;
+	std::unique_ptr<uintptr_t[]> m_replace;
 };
